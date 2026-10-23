@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-    "timflow @ git+https://github.com/timflow-org/timflow.git@main",
+    "timflow[lmfit]>=0.5",
     "numpy",
     "pandas",
     "scipy",
@@ -18,6 +18,7 @@ dependencies = [
     "openpyxl",
     "geopandas",
     "pastastore",
+    "jinja2",  # DataFrame.style in the notebooks
 ]
 
 [project.optional-dependencies]

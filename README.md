@@ -1,7 +1,8 @@
 # timflow-levee-toolkit
 
-Piezometer analysis of levees with Timflow.
+[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
 
+Piezometer analysis of levees with Timflow.
 
 Workflow and Python toolkit to derive the geohydrological properties of a levee from piezometer
 measurements, with transient cross-section models in [Timflow](https://github.com/timflow-org/timflow).
@@ -103,8 +104,9 @@ ruff check timflow_levee_toolkit tests
 
 GitHub Actions runs ruff and the unit tests on every push, and also the example notebooks on pull requests.
 
-The version is set in one place, `__version__` in `timflow_levee_toolkit/__init__.py`, and each release is
-tagged (`v0.1.0`, ...). The notebooks print the version, so the executed notebooks record which version
+The version is set in `__version__` in `timflow_levee_toolkit/__init__.py`, and each release is tagged
+(`v0.1.0`, ...). The version badge at the top of this README is static (the repository is private): update it
+together with `__version__`; a test checks that they match. The notebooks print the version, so the executed notebooks record which version
 produced the results. To reproduce results of a project, check out the tag in your clone (`git checkout v0.1.0`).
 
 ## Status and limitations
