@@ -23,7 +23,7 @@ For each transect (a cross-section through the levee, perpendicular to the river
    set up as a Timflow cross-section model.
 3. The model is calibrated on the observed heads (transmissivity, resistance, storage).
 4. The calibrated model gives response factors along the cross-section: steady state, tidal
-   and at the design high water (MHW, *maatgevend hoogwater*: the peak of the storm event).
+   and at the design high water level (MHW, *maatgevende hoogwaterstand*: the peak of the storm event).
    Leakage lengths of foreland and hinterland are fitted to these, following the
    *Technisch Rapport Waterspanningen bij Dijken* (TAW, 2004).
 5. The heads during a storm event (river level of a given return period) are calculated.
