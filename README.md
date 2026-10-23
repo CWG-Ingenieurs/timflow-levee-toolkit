@@ -23,8 +23,9 @@ For each transect (a cross-section through the levee, perpendicular to the river
    set up as a Timflow cross-section model.
 3. The model is calibrated on the observed heads (transmissivity, resistance, storage).
 4. The calibrated model gives response factors along the cross-section: steady state, tidal
-   and for the mean high water. Leakage lengths of foreland and hinterland are fitted to these,
-   following the *Technisch Rapport Waterspanningen bij Dijken* (TAW, 2004).
+   and at the design high water (MHW, *maatgevend hoogwater*: the peak of the storm event).
+   Leakage lengths of foreland and hinterland are fitted to these, following the
+   *Technisch Rapport Waterspanningen bij Dijken* (TAW, 2004).
 5. The heads during a storm event (river level of a given return period) are calculated.
 
 ## Getting started
@@ -103,6 +104,9 @@ ruff check timflow_levee_toolkit tests
 ```
 
 GitHub Actions runs ruff and the unit tests on every push, and also the example notebooks on pull requests.
+Once a month (and on request, *Actions → security audit → Run workflow*) the dependencies are checked for
+known vulnerabilities with `pip-audit`: a fix for a direct dependency is proposed as a pull request (raised
+minimum version in `pyproject.toml`); other findings are reported in an issue with the label `security`.
 
 The version is set in `__version__` in `timflow_levee_toolkit/__init__.py`, and each release is tagged
 (`v0.1.0`, ...). The version badge at the top of this README is static (the repository is private): update it
