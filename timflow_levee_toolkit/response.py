@@ -244,10 +244,10 @@ def summarize_rf_tidal(peaks, obslocs):
 
 
 def calculate_rf_mhw(rf_t, obslocs, t_peak, window=1.0, kind="mod"):
-    """Calculate response factors at the design high water level (MHW) of a storm event.
+    """Calculate response factors for the design hydrograph (MHW) of a storm event.
 
-    MHW is the Dutch *maatgevende hoogwaterstand*: the design high water level, here
-    the peak of the storm event (a river level with a given return period).
+    MHW stands for the design situation: the design hydrograph (*waterstandsverloop*)
+    with the design high water level (*maatgevende hoogwaterstand*) as its peak.
     Per location, the maximum of the response factor time series
     `h(t) / h_river(t)` within `window` days of the river peak is taken as
     the MHW response factor.
@@ -422,7 +422,7 @@ def calculate_rf_tidal_x(model_transient, x, t, h_river, min_peak_period=11 / 24
 
 
 def calculate_rf_mhw_x(model_transient, x, h_river, t_peak, window=1.0):
-    """Calculate the modeled response factor at the design high water level (MHW) along x, for all layers.
+    """Calculate the modeled response factor for the design hydrograph (MHW) along x, for all layers.
 
     Same definition as `calculate_rf_mhw` (maximum of `h(t) / h_river(t)`
     within `window` days of the river peak), but continuous along x. The
