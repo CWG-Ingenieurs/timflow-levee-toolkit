@@ -1,0 +1,34 @@
+# Settings of the example project 'Papendrecht'.
+#
+# Paths are relative to this folder. Settings that are left out get the
+# default value (see DEFAULT_SETTINGS in timflow_levee_toolkit/project.py); they are
+# all listed here to show what can be changed.
+
+[project]
+name = "Papendrecht example"
+crs = "EPSG:28992"                      # coordinates of piezometers and cross-sections
+
+[paths]
+general = "data/general"                # project-wide input
+transects = "data/transects"            # one subfolder per transect
+transects_metadata = "transects_metadata.xlsx"   # in 'general': one row per transect
+piezometers = "piezometers.xlsx"        # in 'general': piezometer locations (input)
+timeseries = "timeseries.xlsx"          # in 'general': observed time series (input)
+project_data = "project_data.gpkg"      # in 'general': geopackage created by the notebooks
+piezometer_layer = "piezometers"        # layer in 'project_data'
+parameters = "model_parameters_{transect}.xlsx"   # in the transect folder
+storm_event = "storm_events/storm_event_{loc_storm_event}.xlsx"   # in 'general'
+results = "results"                     # project-wide results (summary over transects)
+
+[transect_folders]                      # subfolders of each transect folder
+pastastore = "pastastore"
+timeseries = "timeseries"
+subsurface = "subsurface"                # subsurface data (REGIS, GeoTOP, CPTs, boreholes)
+intermediate = "results_intermediate"
+final = "results_final"
+
+[units]                                 # axis labels of the figures
+head = "m NAP"                          # absolute heads (vertical datum)
+head_rel = "m"                          # heads relative to an average (fluctuations)
+time = "days"
+x = "m"

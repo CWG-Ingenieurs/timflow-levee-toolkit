@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "timflow_levee_toolkit"
+version = "0.1.0"
+description = "Groundwater analysis of levees with Timflow cross-section models: project set-up, time series, model, response factors"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "timflow",
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "openpyxl",
+    "geopandas",
+    "pastastore",
+]
+
+[project.optional-dependencies]
+# Downloads in the optional notebooks: BRO and Rijkswaterstaat (11, 12), subsurface data (21)
+download = ["hydropandas"]
+subsurface = ["nlmod", "brodata"]
+
+[tool.setuptools]
+packages = ["timflow_levee_toolkit"]
