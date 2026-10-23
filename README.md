@@ -50,7 +50,7 @@ The minimal path runs offline.
 |---|---|---|
 | 0 | `00 Set up project` | yes |
 | 1 | `01 Piezometer locations` | yes |
-| 2 | `10 Import time series from Excel`, or `11 Download BRO groundwater levels` and `12 Download river levels (Rijkswaterstaat)` | yes (one of them) |
+| 2 | `10 Import time series from Excel`, or `11 Download BRO groundwater levels` and `12 Download river levels (Rijkswaterstaat)` | yes (Example uses Excel) |
 | | `15 Overview of measurements` | optional |
 | 3 | `20 Geohydrological scheme` | yes |
 | | `21 Subsurface data` | optional |
