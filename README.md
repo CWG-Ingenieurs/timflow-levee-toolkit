@@ -28,7 +28,8 @@ For each transect (a cross-section through the levee, perpendicular to the river
 
 ## Getting started
 
-Requirements: Python 3.11 or newer, and Timflow.
+Requirements: Python 3.11 or newer. Timflow is installed from its `main` branch on GitHub
+(`timflow-org/timflow`), because the toolkit uses recent features of the transient cross-section models.
 
 ```
 git clone https://github.com/CWG-Ingenieurs/timflow-levee-toolkit.git
@@ -88,6 +89,23 @@ anywhere, e.g. in its own repository; it only holds data and results, the code s
 
 The package has the modules `project`, `timeseries`, `model`, `response`, `subsurface` and
 `output`. All public functions are also available at the top level, e.g. `tlt.load_project`.
+
+## Development
+
+Install with the test dependencies and run the tests from the repository root:
+
+```
+pip install -e ".[test]"
+pytest -m "not slow"      # unit tests, a few seconds
+pytest -m slow            # runs notebooks 00-52 on a copy of the example (about 2 minutes)
+ruff check timflow_levee_toolkit tests
+```
+
+GitHub Actions runs ruff and the unit tests on every push, and also the example notebooks on pull requests.
+
+The version is set in one place, `__version__` in `timflow_levee_toolkit/__init__.py`, and each release is
+tagged (`v0.1.0`, ...). The notebooks print the version, so the executed notebooks record which version
+produced the results. To reproduce results of a project, check out the tag in your clone (`git checkout v0.1.0`).
 
 ## Status and limitations
 

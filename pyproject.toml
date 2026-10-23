@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "timflow_levee_toolkit"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Groundwater analysis of levees with Timflow cross-section models: project set-up, time series, model, response factors"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-    "timflow",
+    "timflow @ git+https://github.com/timflow-org/timflow.git@main",
     "numpy",
     "pandas",
     "scipy",
@@ -21,9 +21,25 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Tests: unit tests and the example test (runs the notebooks)
+test = ["pytest", "nbclient", "nbformat", "ipykernel", "ruff"]
 # Downloads in the optional notebooks: BRO and Rijkswaterstaat (11, 12), subsurface data (21)
 download = ["hydropandas"]
 subsurface = ["nlmod", "brodata"]
 
 [tool.setuptools]
 packages = ["timflow_levee_toolkit"]
+
+[tool.setuptools.dynamic]
+version = { attr = "timflow_levee_toolkit.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: runs the example notebooks (about 2 minutes); skip with -m \"not slow\""]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# Errors only (syntax, undefined names, unused imports); style rules can be added later
+select = ["E9", "F"]
