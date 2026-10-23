@@ -1,0 +1,68 @@
+name: security audit
+
+# Monthly check of the dependencies for known vulnerabilities (CVEs) with pip-audit.
+# A fix for a direct dependency is proposed as a pull request (raised minimum version in
+# pyproject.toml); everything else, or a pull request that cannot be created, becomes an issue.
+on:
+  schedule:
+    - cron: "0 6 1 * *"  # the first day of each month, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install the toolkit with all extras
+        run: pip install -e ".[download,subsurface]" pip-audit packaging
+
+      - name: Run pip-audit
+        run: pip-audit --format json --output audit.json --skip-editable || true
+
+      - name: Process the report
+        id: report
+        run: python .github/scripts/audit_dependencies.py audit.json pyproject.toml report.md
+
+      - name: Propose the fix as a pull request
+        id: pr
+        if: steps.report.outputs.changed == 'true'
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: security/dependency-update
+          commit-message: "Raise minimum versions of vulnerable dependencies"
+          title: "Security: raise minimum versions of vulnerable dependencies"
+          body-path: report.md
+          add-paths: pyproject.toml
+          labels: security
+
+      - name: Report in an issue
+        if: >-
+          steps.report.outputs.vulnerable == 'true' &&
+          (steps.report.outputs.changed != 'true' || steps.pr.outcome != 'success')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_FAILED: ${{ steps.report.outputs.changed == 'true' && steps.pr.outcome != 'success' }}
+        run: |
+          title="Security audit: vulnerable dependencies"
+          if [ "$PR_FAILED" = "true" ]; then
+            printf '\nThe pull request with these changes could not be created (allow GitHub Actions to create pull requests in the repository settings), so apply them by hand.\n' >> report.md
+          fi
+          printf '\nRun: %s/%s/actions/runs/%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> report.md
+          gh label create security --color B60205 --description "Security audit" --force
+          issue=$(gh issue list --state open --label security --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body-file report.md
+          else
+            gh issue create --title "$title" --body-file report.md --label security
+          fi
