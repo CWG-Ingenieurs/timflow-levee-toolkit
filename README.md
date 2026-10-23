@@ -10,7 +10,7 @@ leakage lengths, flow resistances) and the heads during a design storm event.
 
 The toolkit was developed for the piezometer analysis of the levees in the Alblasserwaard
 (Waterschap Rivierenland; CWG Ingenieurs), but the workflow is generic: one project with any number
-of transects. The project data of the Alblasserwaard are kept in their own repository.
+of transects.
 
 ## Method in short
 
@@ -92,16 +92,16 @@ The package has the modules `project`, `timeseries`, `model`, `response`, `subsu
 ## Status and limitations
 
 - Calibration, analysis and storm event share one notebook (52), because calibrated Timflow models
-  cannot yet be saved and loaded. Once that is possible
-  ([timflow PR #171](https://github.com/timflow-org/timflow/pull/171)), the notebook can be split.
+  cannot yet be saved and loaded in an efficient way. Once that is possible
+  (see discussion at [timflow PR #171](https://github.com/timflow-org/timflow/pull/171)), the notebook can be split.
 - Some plot functions are copies of functionality proposed for Timflow itself (e.g. PR #191).
-  They will be removed once that is merged.
+  These might be moved to Timflow and then removed here.
 - The calibration parameters are set in notebook 52; the example uses the set of the Papendrecht
   transects (two aquifers). Adapt it to the geohydrological scheme of each transect.
 
 ## Conventions
 
-- Heads and water levels in m NAP; coordinates in RD New (EPSG:28992).
+- Heads and water levels in m+ref (m NAP); coordinates in RD New (EPSG:28992).
 - Times without time zone, in Dutch winter time (UTC+1).
 - In the model, x = 0 is the boundary between foreland and hinterland (usually the inner toe of the
   levee). The river is at negative x and the hinterland at positive x.
@@ -113,5 +113,5 @@ The code (the package `timflow_levee_toolkit` and the notebooks) is licensed und
 
 The license does not cover the data of the example project. They come from their own sources and keep
 their own terms of use: open data from the BRO (groundwater levels) and Rijkswaterstaat (river levels),
-and the storm events and geohydrological schemes from the Alblasserwaard project, collected for
+and the storm events and geohydrological schemes have been provided by
 Waterschap Rivierenland; see [`examples/papendrecht/README.md`](examples/papendrecht/README.md).
