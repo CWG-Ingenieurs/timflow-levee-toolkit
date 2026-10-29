@@ -9,7 +9,7 @@ organised in the modules `project`, `timeseries`, `model`, `response`,
 __version__ = "0.1.0"
 
 from ._units import DEFAULT_UNITS
-from .maps import BASEMAPS, add_basemap, square_extent
+from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
 from .output import (
     finalize_and_save,
     export_to_excel,
@@ -100,6 +100,7 @@ __all__ = [
     "BASEMAPS",
     "add_basemap",
     "square_extent",
+    "plot_transect_map",
     "finalize_and_save",
     "export_to_excel",
     "DEFAULT_SETTINGS",

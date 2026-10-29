@@ -150,6 +150,18 @@ class Project:
         """Metadata of one transect, see `read_transect_metadata`."""
         return read_transect_metadata(self.general_file("transects_metadata"), transect)
 
+    def crosssection(self, transect):
+        """Cross-section line `[(x1, y1), (x2, y2)]` of a transect (river side first), or None.
+
+        From the columns 'x1_xsec', 'y1_xsec', 'x2_xsec' and 'y2_xsec' of the metadata.
+        """
+        row = self.metadata().set_index("transect").loc[transect]
+        columns = ("x1_xsec", "y1_xsec", "x2_xsec", "y2_xsec")
+        if not all(c in row.index and pd.notna(row[c]) for c in columns):
+            return None
+        x1, y1, x2, y2 = (float(row[c]) for c in columns)
+        return [(x1, y1), (x2, y2)]
+
     def piezometers(self, transect):
         """Piezometers of one transect from the project geopackage."""
         return read_piezometers(
