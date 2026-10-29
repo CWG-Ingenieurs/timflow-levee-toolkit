@@ -70,3 +70,63 @@ def square_extent(ax, x, y, margin=0.3, min_size=100.0):
     ax.set_xlim(xc - half, xc + half)
     ax.set_ylim(yc - half, yc + half)
     ax.set_aspect("equal")
+
+
+def plot_transect_map(piezometers, line=None, crs=28992, source="osm", title=None, figsize=(7, 7)):
+    """Map of the piezometers of one transect, with the cross-section line and a background map.
+
+    One label per well (filters of the same well have the same location), with the name and
+    the x-coordinate in the cross-section; overlapping labels are moved apart.
+
+    Parameters
+    ----------
+    piezometers : pandas.DataFrame
+        Piezometers of one transect, with columns 'name', 'x', 'y' and 'x_crosssection',
+        e.g. from `Project.piezometers`.
+    line : sequence of (x, y), optional
+        Cross-section line `[(x1, y1), (x2, y2)]`, river side first, e.g. from
+        `Project.crosssection`.
+    crs : str or int, optional
+        Coordinate reference system of the coordinates. Default 28992 (RD New).
+    source : str, optional
+        Background map, see `add_basemap`. Default 'osm'.
+    title : str, optional
+        Title above the map, on the right.
+    figsize : tuple of float, optional
+        Default (7, 7).
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    ax : matplotlib.axes.Axes
+    """
+    import matplotlib.pyplot as plt
+    from adjustText import adjust_text
+
+    fig, ax = plt.subplots(figsize=figsize)
+    line_x, line_y = [], []
+    if line is not None:
+        (x1, y1), (x2, y2) = line
+        line_x, line_y = [x1, x2], [y1, y2]
+        ax.plot(line_x, line_y, "k-", label="cross-section")
+        ax.plot(x1, y1, "bs", label="start (river side)")
+    ax.scatter(piezometers["x"], piezometers["y"], c="C1", zorder=5, label="piezometers")
+
+    wells = piezometers.drop_duplicates(["x", "y"])
+    texts = [
+        ax.text(row["x"], row["y"], f"{row['name'].rsplit('_', 1)[0]}\nx = {row['x_crosssection']:.0f} m",
+                fontsize=7, zorder=6, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.75))
+        for _, row in wells.iterrows()
+    ]
+    square_extent(ax, [*piezometers["x"], *line_x], [*piezometers["y"], *line_y])
+    add_basemap(ax, crs=crs, source=source)
+    ax.ticklabel_format(useOffset=False, style="plain")
+    # Move overlapping labels apart (after the extent is set), with a line to the point
+    adjust_text(texts, x=list(wells["x"]), y=list(wells["y"]), ax=ax, expand=(1.2, 1.4),
+                arrowprops=dict(arrowstyle="-", color="0.3", lw=0.5))
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.legend(loc=(0, 1), frameon=False, ncol=2, fontsize="x-small")
+    if title:
+        ax.set_title(title, loc="right")
+    return fig, ax
