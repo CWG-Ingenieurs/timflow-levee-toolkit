@@ -19,7 +19,7 @@ def test_add_basemap_sends_user_agent_and_uses_named_source(calls):
     assert tlt.add_basemap(ax, crs=28992, source="brt") is True
     assert calls[0]["headers"] == {"User-Agent": USER_AGENT}  # OpenStreetMap blocks requests without it
     assert calls[0]["source"] == tlt.BASEMAPS["brt"][0]
-    assert "Kadaster" in calls[0]["attribution"]
+    assert calls[0]["attribution"] == "Kaartgegevens © Kadaster"
     assert calls[0]["crs"] == 28992
     plt.close(f)
 

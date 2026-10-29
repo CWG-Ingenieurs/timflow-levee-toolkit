@@ -104,7 +104,7 @@ pytest -m slow            # runs notebooks 00-52 on a copy of the example (about
 ruff check timflow_levee_toolkit tests
 ```
 
-GitHub Actions runs ruff and the unit tests on every push, and also the example notebooks on pull requests.
+GitHub Actions runs ruff and the unit tests on every push and pull request. The example notebooks run once a week and on request (*Actions → tests → Run workflow*), because they download background maps from OpenStreetMap; run them before merging a change to the notebooks.
 Once a month (and on request, *Actions → security audit → Run workflow*) the dependencies are checked for
 known vulnerabilities with `pip-audit`: a fix for a direct dependency is proposed as a pull request (raised
 minimum version in `pyproject.toml`); other findings are reported in an issue with the label `security`.

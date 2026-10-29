@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # The example notebooks download background maps from OpenStreetMap: run them once a week
+  # (and on request), not on every push or pull request
+  schedule:
+    - cron: "0 5 * * 1"  # Monday 05:00 UTC
 
 jobs:
   unit:
@@ -22,7 +26,7 @@ jobs:
   example:
     name: example notebooks
     needs: unit
-    if: github.event_name != 'push'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

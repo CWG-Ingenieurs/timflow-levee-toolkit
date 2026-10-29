@@ -6,11 +6,11 @@ USER_AGENT = "timflow-levee-toolkit (+https://github.com/CWG-Ingenieurs/timflow-
 
 # Background maps by name: (tile URL in web mercator, attribution)
 BASEMAPS = {
-    "osm": ("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "(C) OpenStreetMap contributors"),
+    "osm": ("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors"),
     "brt": ("https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png",
-            "Kaartgegevens (C) Kadaster"),
+            "Kaartgegevens © Kadaster"),
     "brt_grey": ("https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png",
-                 "Kaartgegevens (C) Kadaster"),
+                 "Kaartgegevens © Kadaster"),
 }
 
 
