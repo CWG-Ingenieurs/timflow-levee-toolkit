@@ -1035,7 +1035,7 @@ def make_obslocs(piezometers):
 
     optional = ["name", "locatie", "peilbuis", "filter_top", "filter_bottom",
                 "screen_top", "screen_bottom", "object_id", "omschrijving",
-                "series_ID", "use_calibration"]
+                "series_ID", "use_calibration", "remark"]
     cols = required + [col for col in optional if col in piezometers.columns]
     obslocs = pd.DataFrame(piezometers[cols])
 
