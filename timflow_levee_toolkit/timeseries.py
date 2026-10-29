@@ -290,7 +290,7 @@ def calculate_max_response(h_river, h_piezo):
     }
 
 
-def plot_hysteresis(h_river, h_piezo, ax=None, units=None):
+def plot_hysteresis(h_river, h_piezo, ax=None, units=None, label=None):
     """Plot piezometer head against river head to show hysteresis.
 
     Each point is one time step; a loop instead of a straight line means
@@ -306,6 +306,8 @@ def plot_hysteresis(h_river, h_piezo, ax=None, units=None):
         Axes to plot on. Default creates a new figure.
     units : dict, optional
         Units for the axis labels, see `DEFAULT_UNITS` (key 'head_rel').
+    label : str, optional
+        Label for the legend. Default is the name of `h_piezo`.
 
     Returns
     -------
@@ -314,7 +316,7 @@ def plot_hysteresis(h_river, h_piezo, ax=None, units=None):
     if ax is None:
         _, ax = plt.subplots()
     df = pd.concat({"river": h_river, "piezo": h_piezo}, axis=1).dropna()
-    ax.plot(df["river"], df["piezo"], ".-", ms=3, lw=0.5)
+    ax.plot(df["river"], df["piezo"], ".-", ms=3, lw=0.5, label=label or h_piezo.name)
     ax.set_xlabel(_label(h_river.name or "river", units, "head_rel"))
     ax.set_ylabel(_label(h_piezo.name or "piezometer", units, "head_rel"))
     ax.grid(True)
