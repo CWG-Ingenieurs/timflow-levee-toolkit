@@ -10,3 +10,10 @@ def test_version_badge_matches_package_version():
     badge = re.search(r"img\.shields\.io/badge/version-([^-]+)-", readme)
     assert badge, "version badge not found in README.md"
     assert badge.group(1) == tlt.__version__
+
+
+def test_show_versions(capsys):
+    tlt.show_versions()
+    out = capsys.readouterr().out
+    assert out.startswith(f"timflow-levee-toolkit version {tlt.__version__}\n")
+    assert "installed at:" in out and "\nPython 3." in out and "\ntimflow " in out and "pandas " in out
