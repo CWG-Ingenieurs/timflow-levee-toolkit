@@ -34,6 +34,8 @@ def test_finalize_and_save_creates_folder_and_uses_file_label(tmp_path):
     f, ax = plt.subplots()
     tlt.finalize_and_save(f, folder, "Project - Transect", modelrun="Run 1", tag="test",
                           show=False, file_label="Transect")
+    footer = [t.get_text() for t in f.texts if t.get_text().startswith("Created with")]
+    assert footer and footer[0].startswith(f"Created with timflow-levee-toolkit {tlt.__version__} on ")
     files = list(Path(folder).glob("*.pdf"))
     assert len(files) == 1
     assert files[0].name.startswith("timflow_Transect_") and files[0].name.endswith("_test_run 1.pdf")
