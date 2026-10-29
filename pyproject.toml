@@ -19,6 +19,7 @@ dependencies = [
     "geopandas",
     "pastastore",
     "jinja2",  # DataFrame.style in the notebooks
+    "contextily",  # background maps
 ]
 
 [project.optional-dependencies]
