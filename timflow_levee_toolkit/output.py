@@ -54,7 +54,7 @@ def finalize_and_save(
     Project-specific convenience for finishing off a figure returned by
     `plot_transient_results`, `plot_steady_results`, or any other
     `(fig, axes)`-returning plot call: adds the standard suptitle and
-    "Created with Timflow on ..." timestamp, saves a PDF named after
+    "Created with timflow-levee-toolkit <version> on ..." timestamp, saves a PDF named after
     `file_label` (or `project_name`), `tag` and `modelrun`, then optionally
     shows and closes the figure.
 
@@ -89,11 +89,13 @@ def finalize_and_save(
     without long path support), the filename is shortened, see
     `_fit_filename`.
     """
+    from . import __version__
+
     timestamp = dt.now()
     title_parts = [p for p in (project_name, modelrun.lower()) if p]
     f.suptitle(" - ".join(title_parts), fontweight="bold")
     f.text(
-        0.9, 0.01, f"Created with Timflow on {timestamp:%Y-%m-%d %H:%M:%S}",
+        0.9, 0.01, f"Created with timflow-levee-toolkit {__version__} on {timestamp:%Y-%m-%d %H:%M:%S}",
         ha="right", fontsize=7,
     )
     label = project_name if file_label is None else file_label
