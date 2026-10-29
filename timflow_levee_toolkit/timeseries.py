@@ -45,7 +45,7 @@ def plot_select(pstore, xlim=None, ylim=None, title=None, subset=None, figsize=(
     ax.set_ylabel(_label("Heads", units, "head"))
     ax.set_xlabel("Date")
     ax.yaxis.grid(True, alpha=0.7)
-    ax.legend(ncol=3)
+    ax.legend(loc=(0, 1), frameon=False, ncol=3, fontsize="x-small")
 
     if xlim:
         ax.set_xlim(xlim)
