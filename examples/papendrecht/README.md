@@ -35,7 +35,7 @@ example, but need an internet connection.
 | File | Contents |
 |---|---|
 | `project_settings.toml` | folder and file names, units (all settings listed, all optional) |
-| `data/general/transects_metadata.xlsx` | one row per transect: polder level, undisturbed head, river gauge, widths, model period, rectangle and cross-section line |
+| `data/general/transects_metadata.xlsx` | one row per transect: polder level, undisturbed head, river gauge, widths, rectangle and cross-section line |
 | `data/general/piezometers.xlsx` | one row per piezometer filter: transect, coordinates, filter screen, model layer, x in the cross-section |
 | `data/general/timeseries.xlsx` | observed heads and river level, one column per series |
 | `data/general/storm_events/storm_event_<id>.xlsx` | storm events ('waterstandsverloop') at locations 308113 and 303520, return period 30,000 years (see the header of the files) |

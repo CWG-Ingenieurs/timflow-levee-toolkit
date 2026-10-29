@@ -69,7 +69,8 @@ layout of a project folder.
 A project is a folder with a `project_settings.toml` (optional) and the input in Excel:
 
 - `transects_metadata.xlsx`: one row per transect, with the polder level, undisturbed head, river
-  gauge, widths of river, foreland and hinterland, and model period.
+  gauge, and widths of river, foreland and hinterland. The model period is not part of it: you choose
+  it in notebook 51, from the figures of the complete series.
 - `piezometers.xlsx`: one row per piezometer filter, with transect, coordinates, filter screen,
   model layer and x in the cross-section (given by hand).
 - `timeseries.xlsx`: heads and river levels, one column per series. Instead of this file, you can

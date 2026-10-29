@@ -53,7 +53,7 @@ METADATA_REQUIRED = [
     "width_river", "width_foreland", "width_hinterland",
 ]
 METADATA_OPTIONAL = [
-    "location", "loc_storm_event", "farfield", "tmin", "tmax",
+    "location", "loc_storm_event", "farfield",
     "x1_xsec", "y1_xsec", "x2_xsec", "y2_xsec",
 ]
 FARFIELD_OPTIONS = ("polder_level", "undisturbed_head")
@@ -309,7 +309,9 @@ def read_transect_metadata(metadata_file, transect_name):
           L_foreland          : width of the foreland [m]
           L_hinterland        : width of the hinterland [m] (plotting only)
           farfield            : far-field reference, 'polder_level' (default) or 'undisturbed_head'
-          tmin, tmax          : model period (pandas.Timestamp), or None if not given
+
+        The model period is not part of the metadata: it is chosen in notebook 51,
+        from the figures of the complete series.
     """
     metadata = read_transects_table(metadata_file)
     rows = metadata[metadata["transect"] == transect_name]
@@ -323,7 +325,6 @@ def read_transect_metadata(metadata_file, transect_name):
     def optional(col):
         return row[col] if col in row.index and pd.notna(row[col]) else None
 
-    tmin, tmax = optional("tmin"), optional("tmax")
     return {
         "polder_level": row["polder_level"],
         "undisturbed_head": row["undisturbed_head"],
@@ -333,8 +334,6 @@ def read_transect_metadata(metadata_file, transect_name):
         "L_foreland": row["width_foreland"],
         "L_hinterland": row["width_hinterland"],
         "farfield": optional("farfield") or "polder_level",
-        "tmin": pd.Timestamp(tmin) if tmin is not None else None,
-        "tmax": pd.Timestamp(tmax) if tmax is not None else None,
     }
 
 

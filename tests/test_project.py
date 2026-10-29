@@ -33,7 +33,7 @@ def test_read_transect_metadata(example_dir):
     assert meta["loc_river"] == "dordrecht"
     assert meta["farfield"] == "polder_level"
     assert meta["L_river"] > 0 and meta["L_foreland"] > 0
-    assert meta["tmin"] == pd.Timestamp("2025-12-01")
+    assert "tmin" not in meta and "tmax" not in meta  # the model period is chosen in notebook 51
 
 
 def test_metadata_problems_are_reported(example_dir):
