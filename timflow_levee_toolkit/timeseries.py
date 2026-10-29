@@ -140,7 +140,7 @@ def plot_daily_situation(
     return fig, ax
 
 
-def summarize_observations(obs_ref, obslocs, loc_farfield, river_loc):
+def summarize_observations(obs_ref, obslocs, loc_farfield, loc_river):
     """Summarize the average observed heads in the daily situation.
 
     Parameters
@@ -153,7 +153,7 @@ def summarize_observations(obs_ref, obslocs, loc_farfield, river_loc):
         'modellayer'.
     loc_farfield : str
         Column in `obs_ref` used as the far-field reference (e.g. 'polder').
-    river_loc : str
+    loc_river : str
         Column in `obs_ref` with the river water level.
 
     Returns
@@ -173,7 +173,7 @@ def summarize_observations(obs_ref, obslocs, loc_farfield, river_loc):
         {
             "h_avg": h_avg,
             "h_avg_farfield": h_avg_farfield,
-            "h_scaled": h_avg_farfield / h_avg_farfield[river_loc],
+            "h_scaled": h_avg_farfield / h_avg_farfield[loc_river],
         }
     )
     summary = pd.concat([summary, obslocs[["x_crosssection", "modellayer"]]], axis=1)
