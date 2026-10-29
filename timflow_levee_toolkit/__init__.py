@@ -3,12 +3,13 @@
 All public functions are available at the top level, e.g. `tlt.load_project`
 or `tlt.plot_xsection` after `import timflow_levee_toolkit as tlt`; they are
 organised in the modules `project`, `timeseries`, `model`, `response`,
-`subsurface` and `output`.
+`subsurface`, `maps` and `output`.
 """
 
 __version__ = "0.1.0"
 
 from ._units import DEFAULT_UNITS
+from .maps import BASEMAPS, add_basemap, square_extent
 from .output import (
     finalize_and_save,
     export_to_excel,
@@ -96,6 +97,9 @@ from .subsurface import (
 
 __all__ = [
     "DEFAULT_UNITS",
+    "BASEMAPS",
+    "add_basemap",
+    "square_extent",
     "finalize_and_save",
     "export_to_excel",
     "DEFAULT_SETTINGS",

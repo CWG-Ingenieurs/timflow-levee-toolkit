@@ -14,6 +14,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .maps import add_basemap
+
 
 # -----------------------------------------------------------------------------
 # BRO: CPTs, boreholes and monitoring wells
@@ -122,12 +124,7 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
     if title:
         ax.set_title(title, loc="right")
     if basemap:
-        try:
-            import contextily as ctx
-
-            ctx.add_basemap(ax, crs=28992)
-        except Exception as e:
-            print(f"No background map: {type(e).__name__}: {e}")
+        add_basemap(ax, crs=28992)
     return fig, ax
 
 
