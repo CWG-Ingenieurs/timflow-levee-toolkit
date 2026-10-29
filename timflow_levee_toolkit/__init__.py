@@ -10,6 +10,7 @@ __version__ = "0.1.0"
 
 from ._units import DEFAULT_UNITS
 from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
+from .versions import show_versions
 from .output import (
     finalize_and_save,
     export_to_excel,
@@ -101,6 +102,7 @@ __all__ = [
     "add_basemap",
     "square_extent",
     "plot_transect_map",
+    "show_versions",
     "finalize_and_save",
     "export_to_excel",
     "DEFAULT_SETTINGS",
