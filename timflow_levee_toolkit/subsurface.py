@@ -14,7 +14,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .maps import add_basemap
+from .maps import add_basemap, square_extent
 
 
 # -----------------------------------------------------------------------------
@@ -74,15 +74,18 @@ def save_bro_locations(locations, gpkg_file):
             print(f"{kind}: {len(gdf)} locations saved")
 
 
-def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, figsize=(10, 8)):
+def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, figsize=(8, 8)):
     """Map of the BRO locations, with labels.
+
+    The map is square around the search area and the cross-section line, with some
+    surroundings; the search area is drawn as a dashed outline.
 
     Parameters
     ----------
     locations : dict
         From `get_bro_locations`.
     extent : sequence of float
-        `[xmin, xmax, ymin, ymax]` of the map.
+        `[xmin, xmax, ymin, ymax]` of the search area (e.g. the rectangle of the transect).
     line : sequence of (x, y), optional
         Cross-section line to draw.
     title : str, optional
@@ -90,7 +93,7 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
     basemap : bool, optional
         Add a background map with contextily (needs internet). Default True.
     figsize : tuple of float, optional
-        Figure size. Default (10, 8).
+        Figure size. Default (8, 8).
 
     Returns
     -------
@@ -104,8 +107,12 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
         "gmw": {"color": "blue", "marker": "o", "label": "monitoring well (GMW)"},
     }
     fig, ax = plt.subplots(figsize=figsize)
-    ax.axis("scaled")
-    ax.axis(extent)
+    xmin, xmax, ymin, ymax = extent
+    ax.plot([xmin, xmax, xmax, xmin, xmin], [ymin, ymin, ymax, ymax, ymin], "--", color="0.4", lw=0.8,
+            label="search area")
+    line_x, line_y = zip(*line) if line is not None else ((), ())
+    square_extent(ax, [xmin, xmax, *line_x], [ymin, ymax, *line_y], margin=0.2)
+    ax.ticklabel_format(useOffset=False, style="plain")
     texts = []
     for kind, style in styles.items():
         gdf = locations.get(kind)
@@ -124,6 +131,8 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
         from adjustText import adjust_text
 
         adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="->", color="gray", alpha=0.5))
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
     ax.legend(loc=(0, 1), frameon=False, ncol=3, fontsize="x-small")
     if title:
         ax.set_title(title, loc="right")
