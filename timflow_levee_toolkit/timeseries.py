@@ -76,11 +76,94 @@ def clip_data(pstore, series, xlim):
     """
     oseries = pstore.get_oseries(series).loc[xlim[0] : xlim[1]].dropna()
     df = pd.DataFrame(oseries)
-
-    # Recalculate index to decimal days since start of period
-    df.index = (df.index - xlim[0]).total_seconds() / 3600 / 24
-    df.index.name = "Time [days]"
+    df.index = to_days(df.index, xlim[0])
     return df
+
+
+def to_days(times, start):
+    """Decimal days since `start`, as used for the time axis of a timflow model.
+
+    The one conversion from date and time to model time, used by `clip_data` and
+    `read_observations`, so both give exactly the same values.
+
+    Parameters
+    ----------
+    times : sequence of datetime
+    start : datetime
+        Start of the model period.
+
+    Returns
+    -------
+    pandas.Index
+        Float index named 'Time [days]'.
+    """
+    days = (pd.DatetimeIndex(times) - pd.Timestamp(start)).total_seconds() / 3600 / 24
+    return pd.Index(days, name="Time [days]")
+
+
+OBSERVATIONS_EXPLANATION = [
+    ("observations", "time", "Date and time of the measurement, without time zone (Dutch winter time, UTC+1)"),
+    ("observations", "days since start", "Model time: days since the start of the model period (sheet 'info'); "
+                                         "used as time axis by notebook 52"),
+    ("observations", "<name>", "Observed head or river level [m NAP], one column per series; the far-field "
+                               "reference is a constant column"),
+    ("info", "start, end", "Model period chosen in notebook 51"),
+]
+
+
+def write_observations(obs, path, start, end):
+    """Write the observations of the model period to Excel (notebook 51), for notebook 52.
+
+    Each row has the date and time of the measurement and the model time in days since
+    `start`; notebook 52 uses the latter as time axis (`read_observations`). Excel stores
+    numbers with 16 significant digits, so the days can differ from those in notebook 51
+    in the last digit (less than a nanosecond).
+
+    Parameters
+    ----------
+    obs : pandas.DataFrame
+        Observations with the time in days since `start` as index (from `clip_data`) and
+        one column per series.
+    path : str or pathlib.Path
+        Excel file to write, e.g. 'observations_model_period.xlsx'.
+    start, end : datetime
+        The model period.
+    """
+    if len(obs) > 1_048_575:
+        raise ValueError(f"{len(obs)} rows do not fit in an Excel sheet: choose a shorter model period")
+    table = obs.copy()
+    table.insert(0, "days since start", obs.index.to_numpy())
+    # Date and time of the measurement (whole seconds)
+    table.index = (pd.Timestamp(start) + pd.to_timedelta(obs.index.to_numpy(), unit="D")).round("s")
+    table.index.name = "time"
+    info = pd.DataFrame({"value": [pd.Timestamp(start), pd.Timestamp(end)]}, index=pd.Index(["start", "end"], name="item"))
+    explanation = pd.DataFrame(OBSERVATIONS_EXPLANATION, columns=["sheet", "column", "explanation"])
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(path, engine="openpyxl", datetime_format="yyyy-mm-dd hh:mm:ss") as writer:
+        table.to_excel(writer, sheet_name="observations")
+        info.to_excel(writer, sheet_name="info")
+        explanation.to_excel(writer, sheet_name="explanation", index=False)
+        for ws in writer.sheets.values():
+            for column in ws.columns:
+                width = max(len(str(c.value)) if c.value is not None else 0 for c in column[:200])
+                ws.column_dimensions[column[0].column_letter].width = min(max(width, 10), 60) + 2
+
+
+def read_observations(path):
+    """Read the observations of the model period written by `write_observations` (notebook 52).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Observations with the column 'days since start' as index ('Time [days]') and one
+        column per series. The model period is in `attrs["start"]` and `attrs["end"]`.
+    """
+    info = pd.read_excel(path, sheet_name="info", index_col=0)["value"]
+    obs = pd.read_excel(path, sheet_name="observations", index_col=0)
+    obs.index = pd.Index(obs.pop("days since start").to_numpy(dtype=float), name="Time [days]")
+    obs.attrs.update(start=pd.Timestamp(info["start"]), end=pd.Timestamp(info["end"]))
+    return obs
 
 
 def plot_daily_situation(
