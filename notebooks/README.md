@@ -43,7 +43,7 @@ the modules:
 | 2 | [`15 Overview of measurements`](15%20Overview%20of%20measurements.ipynb) | optional | pastastore | overview table and figures |
 | 3 | [`20 Geohydrological scheme`](20%20Geohydrological%20scheme.ipynb) | minimal | `model_parameters_<transect>.xlsx` | checked scheme |
 | 3 | [`21 Subsurface data`](21%20Subsurface%20data.ipynb) | optional | rectangle and cross-section line | BRO CPTs and boreholes, REGIS and GeoTOP |
-| 4 | [`51 Prepare model inputs`](51%20Prepare%20model%20inputs.ipynb) | minimal | pastastore, metadata | `observations_model_period.csv` |
+| 4 | [`51 Prepare model inputs`](51%20Prepare%20model%20inputs.ipynb) | minimal | pastastore, metadata | `observations_model_period.xlsx` |
 | 5 | [`52 Timflow model`](52%20Timflow%20model.ipynb) | minimal (storm event optional) | all of the above | calibrated parameters, figures, response factors, `model_summary.xlsx` |
 | 6 | [`60 Summary over transects`](60%20Summary%20over%20transects.ipynb) | optional | results of notebook 52 | tables and figures over all transects |
 
