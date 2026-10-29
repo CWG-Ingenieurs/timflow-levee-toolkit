@@ -20,6 +20,7 @@ dependencies = [
     "pastastore",
     "jinja2",  # DataFrame.style in the notebooks
     "contextily",  # background maps
+    "adjustText",  # labels without overlap in maps
 ]
 
 [project.optional-dependencies]
