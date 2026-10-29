@@ -77,15 +77,17 @@ def save_bro_locations(locations, gpkg_file):
 def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, figsize=(8, 8)):
     """Map of the BRO locations, with labels.
 
-    The map is square around the search area and the cross-section line, with some
-    surroundings; the search area is drawn as a dashed outline.
+    The map is square around the extent, with a margin of 3% of its long side on each
+    side; the extent is drawn as a dashed outline. A cross-section line that extends
+    beyond the map is cut off at its edge.
 
     Parameters
     ----------
     locations : dict
         From `get_bro_locations`.
     extent : sequence of float
-        `[xmin, xmax, ymin, ymax]` of the search area (e.g. the rectangle of the transect).
+        `[xmin, xmax, ymin, ymax]`: the extent of the transect in the metadata
+        (`xmin_extent` .. `ymax_extent`), in which the BRO locations were searched.
     line : sequence of (x, y), optional
         Cross-section line to draw.
     title : str, optional
@@ -109,9 +111,8 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
     fig, ax = plt.subplots(figsize=figsize)
     xmin, xmax, ymin, ymax = extent
     ax.plot([xmin, xmax, xmax, xmin, xmin], [ymin, ymin, ymax, ymax, ymin], "--", color="0.4", lw=0.8,
-            label="search area")
-    line_x, line_y = zip(*line) if line is not None else ((), ())
-    square_extent(ax, [xmin, xmax, *line_x], [ymin, ymax, *line_y], margin=0.2)
+            label="extent")
+    square_extent(ax, [xmin, xmax], [ymin, ymax], margin=0.03, min_size=0.0)
     ax.ticklabel_format(useOffset=False, style="plain")
     texts = []
     for kind, style in styles.items():
