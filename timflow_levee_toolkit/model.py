@@ -1082,7 +1082,7 @@ def to_tsandhstar(series):
     Parameters
     ----------
     series : pandas.Series
-        Heads with the time [days] as index, e.g. `obs_dh[river_loc1]`.
+        Heads with the time [days] as index, e.g. `obs_dh[loc_river]`.
 
     Returns
     -------
@@ -1266,7 +1266,7 @@ def read_storm_event(
         Path to the storm event Excel file.
     h_river_avg : float
         Average river head in the daily situation, in the same datum as the
-        water level column (e.g. m NAP), e.g. `obs_ref[river_loc1].mean()`.
+        water level column (e.g. m NAP), e.g. `obs_ref[loc_river].mean()`.
     time_col : str, optional
         Name of the time column [hours]. Default is 'Tijd (uur)'.
     level_col : str, optional
