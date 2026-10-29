@@ -33,7 +33,7 @@ def get_bro_locations(extent):
     dict
         GeoDataFrames (or None) for 'cpt' (cone penetration tests), 'bhr'
         (geotechnical boreholes), 'gmw' (groundwater monitoring wells) and
-        'gbo' (DINO borehole samples).
+        'gbo' (DINO borehole samples), all in EPSG:28992.
     """
     import brodata
 
@@ -50,6 +50,10 @@ def get_bro_locations(extent):
         except Exception as e:  # a missing data type should not stop the others
             print(f"No {kind} locations: {type(e).__name__}: {e}")
             locations[kind] = None
+        # The DINO samples come without a coordinate reference system; like the extent, they are in RD New
+        gdf = locations[kind]
+        if gdf is not None and hasattr(gdf, "set_crs") and gdf.crs is None:
+            locations[kind] = gdf.set_crs(28992)
     return locations
 
 
