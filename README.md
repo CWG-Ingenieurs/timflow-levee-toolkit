@@ -138,5 +138,6 @@ The code (the package `timflow_levee_toolkit` and the notebooks) is licensed und
 
 The license does not cover the data of the example project. They come from their own sources and keep
 their own terms of use: open data from the BRO (groundwater levels) and Rijkswaterstaat (river levels),
-and the storm events and geohydrological schemes have been provided by
-Waterschap Rivierenland; see [`examples/papendrecht/README.md`](examples/papendrecht/README.md).
+storm events created with the [Waterstandsverlopen tool](https://iplo.nl/thema/water/applicaties-modellen/waterveiligheidsmodellen/waterstandsverlopen-tool/),
+and geohydrological schemes provided by Waterschap Rivierenland; see
+[`examples/papendrecht/README.md`](examples/papendrecht/README.md).
