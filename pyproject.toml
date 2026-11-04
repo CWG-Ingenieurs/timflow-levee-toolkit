@@ -30,7 +30,7 @@ test = ["pytest", "nbclient", "nbformat", "ipykernel", "ruff"]
 download = ["hydropandas"]
 subsurface = ["nlmod", "brodata"]
 # Documentation (Read the Docs): Sphinx with the notebooks, which are executed before the build
-docs = ["sphinx", "myst-nb", "furo", "nbclient", "nbformat", "ipykernel"]
+docs = ["timflow_levee_toolkit[download,subsurface]", "sphinx", "myst-nb", "furo", "nbclient", "nbformat", "ipykernel"]
 
 [tool.setuptools]
 packages = ["timflow_levee_toolkit"]
