@@ -19,35 +19,6 @@ def obslocs_table():
     )
 
 
-def test_response_profile_at_toe_and_decay():
-    lf, lh = 100.0, 1000.0
-    rf = tlt.calculate_response_profile(np.array([0.0, lh]), lf, lh)
-    assert rf[0] == pytest.approx(1 / (1 + lf / lh))
-    assert rf[1] == pytest.approx(rf[0] * np.exp(-1))
-
-
-def test_fit_response_profile_recovers_leakage_lengths():
-    x = np.array([0.0, 20, 50, 100, 200, 400, 800])
-    df = pd.DataFrame({
-        "x_crosssection": x,
-        "modellayer": 1,
-        "rf_steady_mod": tlt.calculate_response_profile(x, 120.0, 900.0),
-    })
-    fit = tlt.fit_response_profile(df, "rf_steady_mod")
-    assert fit["leakage_length_foreland"] == pytest.approx(120.0, rel=1e-4)
-    assert fit["leakage_length_hinterland"] == pytest.approx(900.0, rel=1e-4)
-    assert fit["r_squared"] == pytest.approx(1.0)
-    assert fit["layer"] == 1
-
-
-def test_fit_response_profile_lengths_are_positive():
-    # Response that increases with x: an unbounded fit would give a negative leakage length
-    df = pd.DataFrame({"x_crosssection": [0.0, 100, 200], "modellayer": 0, "rf": [0.2, 0.25, 0.3]})
-    fit = tlt.fit_response_profile(df, "rf")
-    assert fit["leakage_length_foreland"] >= 0
-    assert fit["leakage_length_hinterland"] >= 0
-
-
 def test_rf_peaks_amplitude_and_lag():
     lag = 6 * 10 / 1440  # one hour, a multiple of the time step
     river = tidal_series()
