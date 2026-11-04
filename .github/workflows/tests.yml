@@ -23,6 +23,19 @@ jobs:
       - run: ruff check timflow_levee_toolkit tests
       - run: pytest -m "not slow"
 
+  docs:
+    name: documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[docs]"
+      # Without executing the notebooks (Read the Docs does that): checks the configuration and pages
+      - run: python -m sphinx -b html -c docs . docs/_build/html
+
   example:
     name: example notebooks
     needs: unit
