@@ -53,6 +53,9 @@ def test_minimal_path_on_example(example_copy):
     rf = pd.read_excel(final / "responsefactors.xlsx", index_col=0)
     assert len(rf) == 6
     assert rf["rf_steady_mod"].between(0, 1).all()
-    assert rf["rf_mhw_mod"].between(0, 1).all()
-    # A storm event is too short to reach the steady response
-    assert (rf["rf_mhw_mod"] <= rf["rf_steady_mod"]).all()
+    print(rf.filter(like="_mod").to_string())
+    # The shorter the change of the river level, the smaller the response:
+    # a tide (hours) < a storm event (days) < steady
+    assert (rf["rf_tidal_mod"] > 0).all()
+    assert (rf["rf_tidal_mod"] < rf["rf_mhw_mod"]).all()
+    assert (rf["rf_mhw_mod"] < rf["rf_steady_mod"]).all()
