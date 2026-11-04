@@ -243,28 +243,28 @@ def summarize_rf_tidal(peaks, obslocs):
     return df
 
 
-def calculate_rf_mhw(rf_t, obslocs, t_peak, window=1.0, kind="mod"):
+def calculate_rf_mhw(h_t, h_river, obslocs, kind="mod"):
     """Calculate response factors for the design hydrograph (MHW) of a storm event.
 
     MHW stands for the design situation: the design hydrograph (*waterstandsverloop*)
     with the design high water level (*maatgevende hoogwaterstand*) as its peak.
-    Per location, the maximum of the response factor time series
-    `h(t) / h_river(t)` within `window` days of the river peak is taken as
-    the MHW response factor.
+    Per location, the response factor is the peak of the head divided by the
+    peak of the river level, both relative to the average river level:
+    `max(h(t)) / max(h_river(t))`. The peak of the head comes later than the
+    peak of the river level; the time of the peak of the head is returned too.
 
     Parameters
     ----------
-    rf_t : pandas.DataFrame
-        Response factor time series with time [days] as index and
-        MultiIndex columns `(layer, obsloc)`, e.g. from `select_obslocs`.
+    h_t : pandas.DataFrame
+        Heads relative to the average river level (the transient part of the
+        model), with time [days] as index and MultiIndex columns
+        `(layer, obsloc)`, e.g. from `select_obslocs`.
+    h_river : pandas.Series
+        River head relative to the average river level, with time [days] as
+        index.
     obslocs : pandas.DataFrame
         Observation locations; must have columns 'x_crosssection' and
         'modellayer'.
-    t_peak : float
-        Time [days] of the river peak, e.g. `h_river.idxmax()`.
-    window : float, optional
-        Half-width [days] of the window around the river peak in which the
-        maximum response factor is searched. Default is 1.0.
     kind : str, optional
         Suffix of the result columns: "mod" (default) for modeled or "obs"
         for observed response factors.
@@ -273,19 +273,19 @@ def calculate_rf_mhw(rf_t, obslocs, t_peak, window=1.0, kind="mod"):
     -------
     pandas.DataFrame
         Indexed by observation location with columns 'x_crosssection',
-        'modellayer', 'rf_mhw_<kind>' and 't_mhw_<kind>' (time of the
-        selected maximum [days]).
+        'modellayer', 'rf_mhw_<kind>' and 't_mhw_<kind>' (time of the peak of
+        the head [days]).
     """
-    in_window = rf_t.loc[np.abs(rf_t.index - t_peak) <= window]
+    h_river_max = h_river.max()
 
     records = []
-    for (layer, obsloc), rf in in_window.items():
-        t_max = rf.idxmax()
+    for (layer, obsloc), h in h_t.items():
+        t_max = h.idxmax()
         records.append({
             "obsloc": obsloc,
             "x_crosssection": obslocs.loc[obsloc, "x_crosssection"],
             "modellayer": layer,
-            f"rf_mhw_{kind}": rf[t_max],
+            f"rf_mhw_{kind}": h[t_max] / h_river_max,
             f"t_mhw_{kind}": t_max,
         })
     return pd.DataFrame(records).set_index("obsloc")
@@ -421,12 +421,12 @@ def calculate_rf_tidal_x(model_transient, x, t, h_river, min_peak_period=11 / 24
     return df
 
 
-def calculate_rf_mhw_x(model_transient, x, h_river, t_peak, window=1.0):
+def calculate_rf_mhw_x(model_transient, x, h_river):
     """Calculate the modeled response factor for the design hydrograph (MHW) along x, for all layers.
 
-    Same definition as `calculate_rf_mhw` (maximum of `h(t) / h_river(t)`
-    within `window` days of the river peak), but continuous along x. The
-    transient model must be forced with the storm boundary condition.
+    Same definition as `calculate_rf_mhw` (peak of the head divided by the
+    peak of the river level), but continuous along x. The transient model must
+    be forced with the storm boundary condition.
 
     Parameters
     ----------
@@ -437,10 +437,6 @@ def calculate_rf_mhw_x(model_transient, x, h_river, t_peak, window=1.0):
     h_river : pandas.Series
         River head relative to the average river level, with time [days] as
         index.
-    t_peak : float
-        Time [days] of the river peak, e.g. `h_river.idxmax()`.
-    window : float, optional
-        Half-width [days] of the window around the river peak. Default is 1.0.
 
     Returns
     -------
@@ -448,9 +444,8 @@ def calculate_rf_mhw_x(model_transient, x, h_river, t_peak, window=1.0):
         Index x [m], one column per layer.
     """
     x = np.asarray(x, dtype=float)
-    rf_t = calculate_head_t(model_transient, x, h_river.index.to_numpy()).div(h_river, axis=0)
-    in_window = rf_t.loc[np.abs(rf_t.index - t_peak) <= window]
-    df = in_window.max().unstack("layer").reindex(x)
+    h_t = calculate_head_t(model_transient, x, h_river.index.to_numpy())
+    df = (h_t.max() / h_river.max()).unstack("layer").reindex(x)
     df.index.name = "x [m]"
     return df
 

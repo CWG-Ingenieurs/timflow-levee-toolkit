@@ -53,3 +53,6 @@ def test_minimal_path_on_example(example_copy):
     rf = pd.read_excel(final / "responsefactors.xlsx", index_col=0)
     assert len(rf) == 6
     assert rf["rf_steady_mod"].between(0, 1).all()
+    assert rf["rf_mhw_mod"].between(0, 1).all()
+    # A storm event is too short to reach the steady response
+    assert (rf["rf_mhw_mod"] <= rf["rf_steady_mod"]).all()
