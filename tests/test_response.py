@@ -72,16 +72,16 @@ def test_summarize_rf_tidal_medians_per_location():
     assert np.isnan(df.loc["toe_shallow", "rf_tidal_mod"])
 
 
-def test_rf_mhw_takes_maximum_within_window():
+def test_rf_mhw_is_peak_head_over_peak_river():
     obslocs = obslocs_table()
     t = np.linspace(0, 10, 101)
-    rf = np.where(np.abs(t - 5) <= 1, 0.6, 0.1)
-    rf[t == 9.0] = 0.95  # outside the window around the peak: must be ignored
-    rf_t = pd.DataFrame({(1, "far"): rf}, index=t)
-    rf_t.columns = pd.MultiIndex.from_tuples(rf_t.columns, names=["layer", "obsloc"])
-    df = tlt.calculate_rf_mhw(rf_t, obslocs, t_peak=5.0, window=1.0)
+    h_river = pd.Series(np.interp(t, [0, 5, 10], [0.0, 2.0, 0.0]), index=t)
+    # The head lags behind the river: after the river peak, h / h_river exceeds the peak ratio
+    h = pd.DataFrame({(1, "far"): np.interp(t, [0, 6, 10], [0.0, 1.2, 0.6])}, index=t)
+    h.columns = pd.MultiIndex.from_tuples(h.columns, names=["layer", "obsloc"])
+    df = tlt.calculate_rf_mhw(h, h_river, obslocs)
     assert df.loc["far", "rf_mhw_mod"] == pytest.approx(0.6)
-    assert abs(df.loc["far", "t_mhw_mod"] - 5.0) <= 1.0
+    assert df.loc["far", "t_mhw_mod"] == pytest.approx(6.0)
     assert df.loc["far", "x_crosssection"] == 50.0
 
 
