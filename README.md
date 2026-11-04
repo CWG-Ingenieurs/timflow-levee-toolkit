@@ -133,12 +133,10 @@ produced the results. To reproduce results of a project, check out the tag in yo
 
 ## License
 
-The code (the package `timflow_levee_toolkit` and the notebooks) is licensed under the
-[MIT License](LICENSE).
+The code, the notebooks and the geohydrological schemes of the example (created by CWG Ingenieurs from
+an interpretation of REGIS and soil investigations) are licensed under the [MIT License](LICENSE).
 
-The license does not cover the data of the example project. They come from their own sources and keep
-their own terms of use: open data from the BRO (groundwater levels) and Rijkswaterstaat (river levels),
-storm events created with the [Waterstandsverlopen tool](https://iplo.nl/thema/water/applicaties-modellen/waterveiligheidsmodellen/waterstandsverlopen-tool/),
-and geohydrological schemes created by CWG Ingenieurs from an interpretation of REGIS and soil
-investigations; see
-[`examples/papendrecht/README.md`](examples/papendrecht/README.md).
+The other example data keep the terms of their source: open data from the BRO (groundwater levels) and
+Rijkswaterstaat (river levels), and storm events created with the
+[Waterstandsverlopen tool](https://iplo.nl/thema/water/applicaties-modellen/waterveiligheidsmodellen/waterstandsverlopen-tool/);
+see [`examples/papendrecht/README.md`](examples/papendrecht/README.md).
