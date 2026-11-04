@@ -490,7 +490,7 @@ def _split_rf_column(colname):
     return method, kind
 
 
-def plot_rf_x(df_rf, columns=None, profiles=None, fits=None, figsize=None, units=None):
+def plot_rf_x(df_rf, columns=None, profiles=None, figsize=None, units=None):
     """Plot response factors against x, with one subplot per model layer.
 
     Each method gets its own color. Modeled values are drawn as a
@@ -510,9 +510,6 @@ def plot_rf_x(df_rf, columns=None, profiles=None, fits=None, figsize=None, units
         Per response factor column a profile along x from the
         `calculate_rf_*_x` functions (index x, one column per layer), e.g.
         `{"rf_steady_mod": calculate_rf_steady_x(...)}`.
-    fits : list of dict, optional
-        Results of `fit_response_profile`; each fitted curve is drawn as a
-        dotted line in the subplot of its layer, in the color of its method.
     figsize : tuple of float, optional
         Figure size. Default is `(10, 3 * nlayers)`.
     units : dict, optional
@@ -552,18 +549,6 @@ def plot_rf_x(df_rf, columns=None, profiles=None, fits=None, figsize=None, units
             else:
                 style = {"marker": "o", "linestyle": "-"}
             ax.plot(data["x_crosssection"], data[col], color=colors[method], label=col, **style)
-
-        for fit in fits or []:
-            if fit["layer"] != layer:
-                continue
-            xs = np.linspace(selected["x_crosssection"].min(), selected["x_crosssection"].max(), 200)
-            rf_fit = calculate_response_profile(xs, fit["leakage_length_foreland"], fit["leakage_length_hinterland"])
-            method = _split_rf_column(fit["colname"])[0]
-            ax.plot(
-                xs, rf_fit, color=colors.get(method, "k"), linestyle=":",
-                label=(f"fit {fit['colname']} (λ1={fit['leakage_length_foreland']:.0f} m, "
-                       f"λ3={fit['leakage_length_hinterland']:.0f} m)"),
-            )
 
         ax.legend(loc=(0, 1), frameon=False, ncol=3, fontsize="x-small")
         ax.set_ylabel("response factor [-]")
