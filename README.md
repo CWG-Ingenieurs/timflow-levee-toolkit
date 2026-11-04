@@ -1,6 +1,6 @@
 # timflow-levee-toolkit
 
-[![version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
+[![version](https://img.shields.io/badge/version-0.1.1-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
 
 Piezometer analysis of levees with Timflow.
 
