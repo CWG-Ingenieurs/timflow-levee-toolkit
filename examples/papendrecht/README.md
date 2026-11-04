@@ -39,7 +39,7 @@ example, but need an internet connection.
 | `data/general/piezometers.xlsx` | one row per piezometer filter: transect, coordinates, filter screen, model layer, x in the cross-section |
 | `data/general/timeseries.xlsx` | observed heads and river level, one column per series |
 | `data/general/storm_events/storm_event_<id>.xlsx` | storm events ('waterstandsverloop') at locations 308113 and 303520, return period 30,000 years (see the header of the files), created with the [Waterstandsverlopen tool](https://iplo.nl/thema/water/applicaties-modellen/waterveiligheidsmodellen/waterstandsverlopen-tool/) |
-| `data/transects/<transect>/model_parameters_<transect>.xlsx` | geohydrological scheme: tab `initial` |
+| `data/transects/<transect>/model_parameters_<transect>.xlsx` | geohydrological scheme: tab `initial`, created by CWG Ingenieurs from an interpretation of REGIS and soil investigations |
 
 Each Excel file has a sheet `explanation` describing its columns. Use them as templates for your own project.
 
