@@ -21,7 +21,7 @@ PROJECT_DIR_LINE = 'project_dir = Path.cwd().parent / "examples" / "papendrecht"
 # differences in the last bit of the input (pandas version, platform) can lead to another of them
 # (RMSE 0.08-0.10 m). So the test checks that the results make sense, not their exact values.
 MAX_RMSE = 0.12  # [m]
-LEAKAGE_LENGTH_RANGE = (10.0, 10_000.0)  # [m]
+LEAKAGE_FACTOR_RANGE = (10.0, 10_000.0)  # [m]
 
 
 def run_notebook(name, project_dir):
@@ -45,10 +45,8 @@ def test_minimal_path_on_example(example_copy):
     summary = pd.read_excel(final / "model_summary.xlsx", index_col=0).loc[TRANSECT]
     print(summary.to_string())
     assert 0 < summary["rmse_m"] < MAX_RMSE
-    for key in ("leakage_length_foreland_steady_m", "leakage_length_hinterland_steady_m",
-                "leakage_length_foreland_mhw_m", "leakage_length_hinterland_mhw_m"):
-        assert LEAKAGE_LENGTH_RANGE[0] < summary[key] < LEAKAGE_LENGTH_RANGE[1], key
-    assert summary["r_squared_steady"] > 0.9
+    for key in ("leakage_factor_riverside_m", "leakage_factor_landside_m"):
+        assert LEAKAGE_FACTOR_RANGE[0] < summary[key] < LEAKAGE_FACTOR_RANGE[1], key
 
     rf = pd.read_excel(final / "responsefactors.xlsx", index_col=0)
     assert len(rf) == 6

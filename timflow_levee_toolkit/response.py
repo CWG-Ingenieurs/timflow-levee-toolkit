@@ -1,4 +1,4 @@
-"""Response factors, flow resistance and leakage lengths.
+"""Response factors and flow resistance.
 
 The `calculate_rf_*` functions work on (time series of) heads, so the same
 function is used for modeled and observed heads.
@@ -7,7 +7,6 @@ function is used for modeled and observed heads.
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from ._units import _label
@@ -45,46 +44,6 @@ def calculate_flow_resistance(model_steady, inhom_name: str, layer: int = -1) ->
     return (leakagefactor / kD) * np.tanh(L / leakagefactor)
 
 
-def calculate_response_profile(x, leakage_length_foreland, leakage_length_hinterland):
-    """Response factor along x, based on the dutch publication Technisch Rapport Waterspanningen bij Dijken (TRWD).
-
-        The first formula is an alternative derivation of the ratio W1/W3, based on
-        TRWD p. b4-6: W = leakage length / kD for long foreland and hinterland with
-        equal transmissivity (kD) in both.
-
-        The second formula (response factor at the hinge point, 'kantelpunt') is from
-        TRWD p. b4-5: a rewritten form of the formula for phi_2 for L_2 = 0 (so W_2 = 0).
-
-        The third formula (response over distance) is from TRWD p. b4-6: the formula
-        for phi(x) in the hinterland for L_2 = 0 (so a = 0).
-
-        Parameters
-        ----------
-        x : np.array
-            x-locations [m]
-        leakage_length_foreland : float
-            Leakage length of the foreland [m]
-        leakage_length_hinterland : float
-            Leakage length of the hinterland [m]
-
-        Returns
-        -------
-        np.array
-            Response factor per location
-
-        
-    """
-    ratio_W1_W3 = leakage_length_foreland / leakage_length_hinterland
-
-    # Response at the hinge point ('kantelpunt')
-    rk = 1 / (1 + (ratio_W1_W3))
-
-    # Decay of the response with the distance x in the hinterland
-    r_x = np.exp(-1 * (x / leakage_length_hinterland))
-
-    return rk * r_x
-
-
 # -----------------------------------------------------------------------------
 # Response factors
 # -----------------------------------------------------------------------------
@@ -94,8 +53,8 @@ def calculate_response_profile(x, leakage_length_foreland, leakage_length_hinter
 # DataFrame indexed by observation location with columns 'x_crosssection'
 # and 'modellayer' plus response factor columns named
 # `rf_<method>_<mod|obs>` (e.g. 'rf_steady_mod', 'rf_tidal_obs'). Tables of
-# different methods can be combined with `combine_rf`, fitted with
-# `fit_response_profile` and plotted with `plot_rf_x`.
+# different methods can be combined with `combine_rf` and plotted with
+# `plot_rf_x`.
 
 
 def calculate_rf_steady(model_steady, obslocs, h_river, h_obs=None):
@@ -289,68 +248,6 @@ def calculate_rf_mhw(h_t, h_river, obslocs, kind="mod"):
             f"t_mhw_{kind}": t_max,
         })
     return pd.DataFrame(records).set_index("obsloc")
-
-
-def fit_response_profile(df, colname, layer=None, p0=(300.0, 1000.0), ax=None, units=None):
-    """Fit `calculate_response_profile` to response factors over the cross-section.
-
-    Fits the leakage lengths of the foreland and hinterland to the response
-    factors of a single model layer.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Response factors with columns 'x_crosssection', 'modellayer' and
-        `colname`, e.g. the output of `calculate_rf_steady` or
-        `calculate_rf_mhw`.
-    colname : str
-        Column with the response factors to fit (e.g. 'rf_steady_mod').
-    layer : int, optional
-        Model layer to fit. Default is the deepest layer in `df`.
-    p0 : tuple of float, optional
-        Initial guess for (leakage_length_foreland, leakage_length_hinterland) [m].
-        Default is (300.0, 1000.0). Both are bounded to positive values.
-    ax : matplotlib.axes.Axes, optional
-        If given, the data and fitted curve are plotted on this axes.
-    units : dict, optional
-        Units for the axis labels, see `DEFAULT_UNITS` (key 'x').
-
-    Returns
-    -------
-    dict
-        Keys 'leakage_length_foreland', 'leakage_length_hinterland' [m], 'r_squared'
-        [-], 'layer' and 'colname'.
-    """
-    if layer is None:
-        layer = df["modellayer"].max()
-    selected = df[df["modellayer"] == layer].dropna(subset=[colname]).sort_values("x_crosssection")
-    xs = selected["x_crosssection"].to_numpy(dtype=float)
-    rf = selected[colname].to_numpy(dtype=float)
-
-    # Leakage lengths are positive: bound the fit (avoids meaningless negative values)
-    (leakage_length_foreland, leakage_length_hinterland), _ = curve_fit(
-        calculate_response_profile, xs, rf, p0, bounds=(0, np.inf)
-    )
-
-    rf_fit = calculate_response_profile(xs, leakage_length_foreland, leakage_length_hinterland)
-    r_squared = 1 - np.sum((rf - rf_fit) ** 2) / np.sum((rf - rf.mean()) ** 2)
-
-    if ax is not None:
-        ax.plot(xs, rf, ".", label="data")
-        ax.plot(xs, rf_fit, "--", label="fitted")
-        ax.set_xlabel(_label("x", units, "x"))
-        ax.set_ylabel(f"{colname} [-]")
-        ax.set_title(f"layer {layer}", loc="right")
-        ax.legend(frameon=False)
-        ax.grid(True)
-
-    return {
-        "leakage_length_foreland": leakage_length_foreland,
-        "leakage_length_hinterland": leakage_length_hinterland,
-        "r_squared": r_squared,
-        "layer": int(layer),
-        "colname": colname,
-    }
 
 
 def _rf_profile(values, x):
