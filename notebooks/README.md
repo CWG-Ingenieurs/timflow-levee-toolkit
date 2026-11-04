@@ -27,7 +27,7 @@ the modules:
 | `project` | project settings, transects metadata, piezometer tables, geopackage |
 | `timeseries` | importing observed series into a pastastore, selecting, summarizing and plotting them |
 | `model` | Timflow cross-section models: geohydrological scheme (Excel), plots of the model and results, storm events |
-| `response` | response factors, flow resistance, leakage lengths |
+| `response` | response factors, flow resistance |
 | `subsurface` | BRO CPTs and boreholes, REGIS and GeoTOP |
 | `output` | saving figures (`finalize_and_save`) and tables (`export_to_excel`) |
 

@@ -1,13 +1,18 @@
 # timflow-levee-toolkit
 
 [![version](https://img.shields.io/badge/version-0.1.1-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
+[![documentation](https://readthedocs.org/projects/timflow-levee-toolkit/badge/?version=stable)](https://timflow-levee-toolkit.readthedocs.io/en/stable/)
 
 Piezometer analysis of levees with Timflow.
+
+Documentation, with the notebooks executed on the example project:
+[timflow-levee-toolkit.readthedocs.io](https://timflow-levee-toolkit.readthedocs.io/en/stable/)
+(`stable`: the latest release; `latest`: the development branch `dev`).
 
 Workflow and Python toolkit to derive the geohydrological properties of a levee from piezometer
 measurements, with transient cross-section models in [Timflow](https://github.com/timflow-org/timflow).
 The calibrated models give the response of the groundwater heads to the river level (response factors,
-leakage lengths, flow resistances) and the heads during a design storm event.
+leakage factors, flow resistances) and the heads during a design storm event.
 
 The toolkit was developed for the piezometer analysis of the levees in the Alblasserwaard
 (Waterschap Rivierenland; CWG Ingenieurs), but the workflow is generic: one project with any number
