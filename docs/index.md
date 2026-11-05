@@ -6,7 +6,8 @@ model calibration, response factors and the heads during a storm event.
 The notebooks below are executed on the example project (Papendrecht, two transects) when the
 documentation is built. The optional notebooks 11, 12, 15 and 21 download data from external
 services (BRO, Rijkswaterstaat, PDOK, REGIS and GeoTOP): to keep the load on these services low, they
-are executed only for the documentation of the main branch and of releases.
+are executed only for the documentation of releases (version 'stable'); in 'latest' (the development
+branch) they are shown without outputs.
 
 ```{toctree}
 :caption: Introduction

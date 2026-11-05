@@ -7,8 +7,8 @@ for Papendrecht West (outputs saved).
 
 The optional notebooks 11, 12, 15 and 21 download data from external services (BRO, Rijkswaterstaat,
 PDOK, REGIS and GeoTOP). To keep the load on these services low, they run only for the documentation
-of `main` and of releases (Read the Docs versions 'latest', 'stable' and tags), or with
-`--downloads`; otherwise they appear without outputs. They run after the minimal path and do not
+of releases (Read the Docs version 'stable' and release tags), or with `--downloads`; otherwise (e.g.
+'latest', which follows `dev`) they appear without outputs. They run after the minimal path and do not
 replace series in the pastastore, so they do not change the model results. An error in one of them
 (e.g. a service that is down) is shown in the notebook and does not stop the build.
 
@@ -48,12 +48,12 @@ DOWNLOADS = [
 
 
 def run_downloads():
-    """Whether to execute the download notebooks: with --downloads, or for main and releases on Read the Docs."""
+    """Whether to execute the download notebooks: with --downloads, or for releases on Read the Docs."""
     if "--downloads" in sys.argv:
         return True
     version = os.environ.get("READTHEDOCS_VERSION", "")
     version_type = os.environ.get("READTHEDOCS_VERSION_TYPE", "")
-    return version in ("latest", "stable") or version_type == "tag"
+    return version == "stable" or version_type == "tag"
 
 
 def run(name, transect, save, allow_errors=False):
