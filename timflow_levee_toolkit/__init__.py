@@ -6,7 +6,7 @@ organised in the modules `project`, `timeseries`, `model`, `response`,
 `subsurface`, `maps` and `output`.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 from ._units import DEFAULT_UNITS
 from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
@@ -78,6 +78,7 @@ from .response import (
     calculate_rf_tidal_x,
     calculate_rf_mhw_x,
     combine_rf,
+    combine_rf_profiles,
     plot_rf_x,
     plot_rf_peaks,
 )
@@ -162,6 +163,7 @@ __all__ = [
     "calculate_rf_tidal_x",
     "calculate_rf_mhw_x",
     "combine_rf",
+    "combine_rf_profiles",
     "plot_rf_x",
     "plot_rf_peaks",
     "get_bro_locations",

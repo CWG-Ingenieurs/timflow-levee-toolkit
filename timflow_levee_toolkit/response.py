@@ -115,15 +115,22 @@ def _find_peaks_in_series(series, min_peak_period):
     return t[peaks], h[peaks]
 
 
-def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24):
+def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6 / 24)):
     """Calculate a response factor and time lag for every tidal peak.
 
-    Peaks are detected with `scipy.signal.find_peaks`, with a minimum time
-    between two peaks of `min_peak_period`. Each river peak is matched to
-    the nearest (in time) peak of the piezometer, which gives per peak:
+    The peaks of the river are detected with `scipy.signal.find_peaks`, with
+    a minimum time between two peaks of `min_peak_period`. For each river
+    peak, the peak of the piezometer is the maximum of its head within
+    `window` around the river peak, which gives per tidal peak:
 
     - response factor: h_peak_piezo / h_peak_river
     - time lag: t_peak_piezo - t_peak_river
+
+    Taking the maximum within a window (instead of the nearest peak found in
+    the head series) gives every tide its own value. With an irregular tide
+    (alternating high and low high waters), a damped head in a deeper aquifer
+    may lose some of the peaks, and matching each river peak to the nearest
+    remaining peak makes the result jump along x.
 
     Works the same for modeled and observed heads; use `summarize_rf_tidal`
     to get one value per location.
@@ -138,7 +145,12 @@ def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24):
     h_river : pandas.Series
         River head relative to its average, with time [days] as index.
     min_peak_period : float, optional
-        Minimum time between two peaks [days]. Default is 11/24 (11 hours).
+        Minimum time between two river peaks [days]. Default is 11/24 (11 hours).
+    window : (float, float), optional
+        Time window [days] relative to each river peak in which the peak of the
+        piezometer is searched. Default is from one hour before to six hours
+        after the river peak (about half a tidal period: the head lags behind
+        the river, but does not reach the next tide).
 
     Returns
     -------
@@ -154,19 +166,24 @@ def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24):
     records = []
     for col, series in h_t.items():
         obsloc = col[-1] if isinstance(col, tuple) else col
-        t_piezo, h_peak_piezo = _find_peaks_in_series(series, min_peak_period)
-        if len(t_piezo) == 0:
+        s = series.dropna()
+        if s.empty:
             continue
+        t = s.index.to_numpy()
+        h = s.to_numpy()
         for t_riv, h_riv in zip(t_river, h_peak_river):
-            i = np.argmin(np.abs(t_piezo - t_riv))
+            in_window = (t >= t_riv + window[0]) & (t <= t_riv + window[1])
+            if not in_window.any():
+                continue
+            i = np.flatnonzero(in_window)[np.argmax(h[in_window])]
             records.append({
                 "obsloc": obsloc,
                 "t_peak_river": t_riv,
-                "t_peak_piezo": t_piezo[i],
+                "t_peak_piezo": t[i],
                 "h_peak_river": h_riv,
-                "h_peak_piezo": h_peak_piezo[i],
-                "t_offset": t_piezo[i] - t_riv,
-                "response_factor": h_peak_piezo[i] / h_riv if h_riv != 0 else np.nan,
+                "h_peak_piezo": h[i],
+                "t_offset": t[i] - t_riv,
+                "response_factor": h[i] / h_riv if h_riv != 0 else np.nan,
             })
     return pd.DataFrame(records, columns=columns)
 
@@ -345,6 +362,27 @@ def calculate_rf_mhw_x(model_transient, x, h_river):
     df = (h_t.max() / h_river.max()).unstack("layer").reindex(x)
     df.index.name = "x [m]"
     return df
+
+
+def combine_rf_profiles(profiles):
+    """Combine response factor profiles along x of several methods into one table.
+
+    Parameters
+    ----------
+    profiles : dict
+        Per column name (e.g. 'rf_steady_mod') a profile from `calculate_rf_steady_x`,
+        `calculate_rf_tidal_x` or `calculate_rf_mhw_x` (index x, one column per layer).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns 'layer', 'x [m]' and one column per method, in the order of `profiles`;
+        one row per layer and x, sorted by layer and x.
+    """
+    df = pd.concat({name: profile.stack() for name, profile in profiles.items()}, axis=1)
+    df.index = df.index.set_names(["x [m]", "layer"])
+    df = df.reorder_levels(["layer", "x [m]"]).sort_index()
+    return df.reset_index()
 
 
 def combine_rf(obslocs, *tables):

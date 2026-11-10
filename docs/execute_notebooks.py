@@ -12,8 +12,9 @@ of releases (Read the Docs version 'stable' and release tags), or with `--downlo
 replace series in the pastastore, so they do not change the model results. An error in one of them
 (e.g. a service that is down) is shown in the notebook and does not stop the build.
 
-The progress dots of the calibration (one per model run) are useful when running a notebook, but not
-in the documentation: they are removed from the outputs.
+Progress output is useful when running a notebook, but not in the documentation: the dots of the
+calibration (one per model run) and the progress bars of the downloads (tqdm) are removed from the
+outputs.
 
 Run from the repository root: `python docs/execute_notebooks.py [--downloads]`. This writes results
 in the example project and outputs in the notebooks: use it in the documentation build, not in a
@@ -60,14 +61,20 @@ def run_downloads():
     return version == "stable" or version_type == "tag"
 
 
-def strip_progress_dots(nb):
-    """Remove rows of progress dots (e.g. one per model run of the calibration) from the stream outputs."""
+# Rows of progress dots, e.g. one per model run of the calibration
+DOTS = re.compile(r"(?m)^\.{3,}\n?")
+# Progress bars of tqdm, e.g. " 50%|█████     | 2/4 [00:08<00:08,  4.31s/it]" or "Get stresses: 0it [00:00, ?it/s]"
+PROGRESS_BAR = re.compile(r"[^\r\n]*(?:\d+%\|[^\r\n|]*\||\d+it \[[^\]\r\n]*(?:it/s|s/it)\])[^\r\n]*[\r\n]*")
+
+
+def strip_progress(nb):
+    """Remove progress output (dots and tqdm progress bars) from the stream outputs of a notebook."""
     for cell in nb.cells:
         if cell.cell_type != "code":
             continue
         for output in cell.get("outputs", []):
             if output.get("output_type") == "stream":
-                output["text"] = re.sub(r"(?m)^\.{3,}\n?", "", output["text"])
+                output["text"] = PROGRESS_BAR.sub("", DOTS.sub("", output["text"]))
         cell.outputs = [o for o in cell.get("outputs", []) if o.get("output_type") != "stream" or o["text"].strip()]
 
 
@@ -83,7 +90,7 @@ def run(name, transect, save, allow_errors=False):
                    resources={"metadata": {"path": str(NOTEBOOKS)}}).execute()
     print(f"{name} ({transect or 'project'}): {time.perf_counter() - start:.0f} s", flush=True)
     if save:
-        strip_progress_dots(nb)
+        strip_progress(nb)
         nbformat.write(nb, path)
 
 

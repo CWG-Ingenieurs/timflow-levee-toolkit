@@ -29,6 +29,21 @@ def test_rf_peaks_amplitude_and_lag():
     assert peaks["t_offset"].median() == pytest.approx(lag, abs=1e-9)
 
 
+def test_rf_peaks_one_value_per_tide_with_irregular_tide():
+    # Alternating high and low high waters; in the damped head the low high waters disappear as peaks
+    t = np.arange(0, 5, 10 / 1440)
+    w = 2 * np.pi / TIDE
+    river = pd.Series(np.cos(w * t) + 0.8 * np.cos(w * t / 2), index=t)
+    lag = 6 * 10 / 1440
+    heads = pd.DataFrame({"deep": 0.1 * np.cos(w * (t - lag)) + 0.6 * np.cos(w * (t - lag) / 2)}, index=t)
+    peaks = tlt.calculate_rf_peaks(heads, river)
+    n_river = len(tlt.calculate_rf_peaks(pd.DataFrame({"r": river}), river))
+    assert len(peaks) == n_river
+    # Every tide has its own piezometer peak, within the window after the river peak
+    assert peaks["t_peak_piezo"].nunique() == n_river
+    assert peaks["t_offset"].between(-1 / 24, 6 / 24).all()
+
+
 def test_summarize_rf_tidal_medians_per_location():
     obslocs = obslocs_table()
     peaks = pd.DataFrame({
@@ -54,6 +69,18 @@ def test_rf_mhw_is_peak_head_over_peak_river():
     assert df.loc["far", "rf_mhw_mod"] == pytest.approx(0.6)
     assert df.loc["far", "t_mhw_mod"] == pytest.approx(6.0)
     assert df.loc["far", "x_crosssection"] == 50.0
+
+
+def test_combine_rf_profiles_long_table():
+    x = np.array([0.0, 50.0])
+    steady = pd.DataFrame({0: [0.5, 0.1], 1: [0.9, 0.8]}, index=pd.Index(x, name="x [m]"))
+    steady.columns.name = "layer"
+    mhw = steady * 0.9
+    df = tlt.combine_rf_profiles({"rf_steady_mod": steady, "rf_mhw_mod": mhw})
+    assert list(df.columns) == ["layer", "x [m]", "rf_steady_mod", "rf_mhw_mod"]
+    assert list(df["layer"]) == [0, 0, 1, 1]
+    assert list(df["x [m]"]) == [0.0, 50.0, 0.0, 50.0]
+    assert df.loc[(df["layer"] == 1) & (df["x [m]"] == 50.0), "rf_mhw_mod"].item() == pytest.approx(0.72)
 
 
 def test_combine_rf_sorted_and_without_duplicate_columns():
