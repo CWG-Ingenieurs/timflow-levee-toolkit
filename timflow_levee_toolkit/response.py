@@ -347,6 +347,27 @@ def calculate_rf_mhw_x(model_transient, x, h_river):
     return df
 
 
+def combine_rf_profiles(profiles):
+    """Combine response factor profiles along x of several methods into one table.
+
+    Parameters
+    ----------
+    profiles : dict
+        Per column name (e.g. 'rf_steady_mod') a profile from `calculate_rf_steady_x`,
+        `calculate_rf_tidal_x` or `calculate_rf_mhw_x` (index x, one column per layer).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns 'layer', 'x [m]' and one column per method, in the order of `profiles`;
+        one row per layer and x, sorted by layer and x.
+    """
+    df = pd.concat({name: profile.stack() for name, profile in profiles.items()}, axis=1)
+    df.index = df.index.set_names(["x [m]", "layer"])
+    df = df.reorder_levels(["layer", "x [m]"]).sort_index()
+    return df.reset_index()
+
+
 def combine_rf(obslocs, *tables):
     """Combine response factor tables of several methods into one table.
 

@@ -56,6 +56,18 @@ def test_rf_mhw_is_peak_head_over_peak_river():
     assert df.loc["far", "x_crosssection"] == 50.0
 
 
+def test_combine_rf_profiles_long_table():
+    x = np.array([0.0, 50.0])
+    steady = pd.DataFrame({0: [0.5, 0.1], 1: [0.9, 0.8]}, index=pd.Index(x, name="x [m]"))
+    steady.columns.name = "layer"
+    mhw = steady * 0.9
+    df = tlt.combine_rf_profiles({"rf_steady_mod": steady, "rf_mhw_mod": mhw})
+    assert list(df.columns) == ["layer", "x [m]", "rf_steady_mod", "rf_mhw_mod"]
+    assert list(df["layer"]) == [0, 0, 1, 1]
+    assert list(df["x [m]"]) == [0.0, 50.0, 0.0, 50.0]
+    assert df.loc[(df["layer"] == 1) & (df["x [m]"] == 50.0), "rf_mhw_mod"].item() == pytest.approx(0.72)
+
+
 def test_combine_rf_sorted_and_without_duplicate_columns():
     obslocs = obslocs_table()
     a = obslocs.assign(rf_steady_mod=[0.1, 0.9, 0.5])
