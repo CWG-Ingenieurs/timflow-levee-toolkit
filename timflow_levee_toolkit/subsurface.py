@@ -8,6 +8,8 @@
 `timflow_levee_toolkit[subsurface]`), so they are imported inside them.
 """
 
+import logging
+from contextlib import contextmanager
 from pathlib import Path
 
 import matplotlib
@@ -15,6 +17,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .maps import add_basemap, square_extent
+
+
+class _SkipUnsupportedTags(logging.Filter):
+    """Skip brodata's warnings about XML tags it does not read ("Tag ... not supported").
+
+    These tags are not needed for the locations, files and graphs; other warnings and errors are kept.
+    """
+
+    def filter(self, record):
+        return not record.getMessage().startswith("Tag ")
+
+
+@contextmanager
+def _quiet_brodata():
+    """Hide the "Tag ... not supported" warnings of brodata within the block."""
+    logger = logging.getLogger("brodata.util")
+    skip = _SkipUnsupportedTags()
+    logger.addFilter(skip)
+    try:
+        yield
+    finally:
+        logger.removeFilter(skip)
 
 
 # -----------------------------------------------------------------------------
@@ -46,7 +70,8 @@ def get_bro_locations(extent):
     locations = {}
     for kind, get in getters.items():
         try:
-            locations[kind] = get()
+            with _quiet_brodata():
+                locations[kind] = get()
         except Exception as e:  # a missing data type should not stop the others
             print(f"No {kind} locations: {type(e).__name__}: {e}")
             locations[kind] = None
@@ -189,7 +214,8 @@ def download_cpt_graphs(cpt_locations, save_dir):
     save_dir.mkdir(parents=True, exist_ok=True)
     for bro_id in cpt_locations.index:
         fname_xml = save_dir / f"{bro_id}.xml"
-        brodata.cpt.ConePenetrationTest.from_bro_id(bro_id, to_file=fname_xml)
+        with _quiet_brodata():
+            brodata.cpt.ConePenetrationTest.from_bro_id(bro_id, to_file=fname_xml)
         fname_svg = save_dir / f"{bro_id}_depth.svg"
         brodata.cpt.graph(fname_xml, graphType="cptCombinedDepth", to_file=fname_svg)
         if fname_svg.stat().st_size < 1024:  # no graph against depth available
@@ -218,7 +244,8 @@ def download_bhr_graphs(bhr_locations, save_dir, z_limits):
     for bro_id in bhr_locations.index:
         fname_xml = save_dir / f"{bro_id}.xml"
         fname_svg = save_dir / f"{bro_id}.svg"
-        brodata.bhr.GeotechnicalBoreholeResearch.from_bro_id(bro_id, to_file=fname_xml)
+        with _quiet_brodata():
+            brodata.bhr.GeotechnicalBoreholeResearch.from_bro_id(bro_id, to_file=fname_xml)
         brodata.bhr.bhrgt_graph(fname_xml, to_file=fname_svg, asNAP=True,
                                 topNap=z_limits[1], bottomNap=z_limits[0])
         # The BRO service returns an error message instead of a graph when it fails
@@ -369,8 +396,11 @@ def regis_profile(regis, x, y):
     Returns
     -------
     pandas.DataFrame
-        One row per REGIS layer that is present at the point (thickness > 0),
-        with top, bottom, kh, kv, kD and c.
+        Indexed by REGIS layer, one row per layer that is present at the point
+        (thickness > 0), with the columns (if available in `regis`)
+        'top [m NAP]', 'bottom [m NAP]', 'thickness [m]', 'kh [m/d]',
+        'kv [m/d]', 'kD [m2/d]' and 'c [d]'. Empty values (e.g. no kh in an
+        aquitard) are NaN.
     """
     point = regis.sel(x=x, y=y, method="nearest")
     df = point.to_dataframe()
@@ -378,4 +408,8 @@ def regis_profile(regis, x, y):
     df = df[columns]
     if {"top", "botm"} <= set(df.columns):
         df = df[(df["top"] - df["botm"]) > 0]
+        df.insert(2, "thickness", df["top"] - df["botm"])
+    df = df.rename(columns={"top": "top [m NAP]", "botm": "bottom [m NAP]", "thickness": "thickness [m]",
+                            "kh": "kh [m/d]", "kv": "kv [m/d]", "kD": "kD [m2/d]", "c": "c [d]"})
+    df.index.name = "REGIS layer"
     return df
