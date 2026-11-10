@@ -36,4 +36,7 @@ myst_heading_anchors = 3
 html_theme = "furo"
 # The start page is docs/index.html: index.html in the root of the site redirects to it
 html_extra_path = ["_extra"]
+# Wide tables in notebook outputs get a horizontal scrollbar
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 html_title = f"timflow-levee-toolkit {release}"

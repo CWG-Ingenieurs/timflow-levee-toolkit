@@ -1,0 +1,9 @@
+/* Wide tables in notebook outputs (DataFrames, styled tables, fit reports): scroll horizontally
+   instead of running off the page */
+.cell_output .output.text_html {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.cell_output .output.text_html table {
+  font-size: 0.85em;
+}
