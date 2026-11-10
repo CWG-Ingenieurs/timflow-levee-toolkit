@@ -32,6 +32,8 @@ exclude_patterns = ["docs/_build", "**/.ipynb_checkpoints"]
 
 nb_execution_mode = "off"
 myst_heading_anchors = 3
+# Formulas with $...$ and $$...$$ in the markdown cells and files
+myst_enable_extensions = ["dollarmath", "amsmath"]
 
 html_theme = "furo"
 # The start page is docs/index.html: index.html in the root of the site redirects to it

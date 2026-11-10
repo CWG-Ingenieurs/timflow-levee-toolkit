@@ -67,7 +67,7 @@ def strip_progress_dots(nb):
             continue
         for output in cell.get("outputs", []):
             if output.get("output_type") == "stream":
-                output["text"] = re.sub(r"(?m)^\.{3,}", "", output["text"])
+                output["text"] = re.sub(r"(?m)^\.{3,}\n?", "", output["text"])
         cell.outputs = [o for o in cell.get("outputs", []) if o.get("output_type") != "stream" or o["text"].strip()]
 
 
