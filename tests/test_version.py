@@ -15,5 +15,8 @@ def test_version_badge_matches_package_version():
 def test_show_versions(capsys):
     tlt.show_versions()
     out = capsys.readouterr().out
-    assert out.startswith(f"timflow-levee-toolkit version {tlt.__version__}\n")
-    assert "installed at:" in out and "\nPython 3." in out and "\ntimflow " in out and "pandas " in out
+    assert out.startswith(f"Toolkit version    : {tlt.__version__}\n")
+    assert "Toolkit location   : " in out and "timflow location   : " in out
+    # timflow.show_versions() for timflow and its dependencies, then the other dependencies, each once
+    assert out.count("timflow version    : ") == 1 and out.count("Pandas version     : ") == 1
+    assert "Pastastore version : " in out

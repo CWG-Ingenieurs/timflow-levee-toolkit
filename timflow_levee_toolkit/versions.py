@@ -1,34 +1,42 @@
-"""Versions of the toolkit, Python and the main packages, for the record in executed notebooks."""
-import importlib.util
-import platform
-import sys
+"""Versions of the toolkit and its dependencies, for the record in executed notebooks."""
 from importlib import metadata
+from importlib.util import find_spec
 from pathlib import Path
 
-PACKAGES = ("pastastore", "pandas", "numpy", "scipy", "matplotlib", "geopandas", "hydropandas", "nlmod", "brodata")
+# Dependencies of the toolkit that `timflow.show_versions` does not print
+PACKAGES = ("pastastore", "geopandas", "contextily")
+# Optional dependencies, for the download notebooks (11, 12) and the subsurface data (21)
+OPTIONAL = ("hydropandas", "nlmod", "brodata")
 
 
-def show_versions():
-    """Print the version and location of the toolkit, and the versions of Python and the main packages.
+def _version(name):
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return "Not Installed"
 
-    The locations show which copy of the toolkit and of timflow the notebook uses (e.g. a local
-    clone or an installed release). Packages that are not installed are left out.
+
+def show_versions(optional=True) -> None:
+    """Print the version of the toolkit and its dependencies, in the style of `timflow.show_versions`.
+
+    First the version of the toolkit and the folders of the toolkit and timflow, which show the
+    copy a notebook uses (a local clone or an installed release); then `timflow.show_versions()`
+    (Python, numpy, scipy, pandas, matplotlib, lmfit, ...); then the other dependencies.
+
+    Parameters
+    ----------
+    optional : bool, optional
+        Print the version of optional dependencies (hydropandas, nlmod, brodata), by default True
     """
+    import timflow
+
     from . import __version__
 
-    timflow = importlib.util.find_spec("timflow")
-    lines = [
-        f"timflow-levee-toolkit version {__version__}",
-        f"  installed at: {Path(__file__).resolve().parent}",
-        f"Python {platform.python_version()} ({sys.executable})",
-    ]
-    if timflow is not None:
-        lines.append(f"timflow {metadata.version('timflow')} ({Path(timflow.origin).parent})")
-    others = []
-    for name in PACKAGES:
-        try:
-            others.append(f"{name} {metadata.version(name)}")
-        except metadata.PackageNotFoundError:
-            pass
-    lines.append("Other packages: " + ", ".join(others))
-    print("\n".join(lines))
+    print(
+        f"Toolkit version    : {__version__}\n"
+        f"Toolkit location   : {Path(__file__).resolve().parent}\n"
+        f"timflow location   : {Path(find_spec('timflow').origin).parent}\n"
+    )
+    timflow.show_versions()
+    names = PACKAGES + (OPTIONAL if optional else ())
+    print("\n".join(f"{f'{name.capitalize()} version':<19}: {_version(name)}" for name in names))
