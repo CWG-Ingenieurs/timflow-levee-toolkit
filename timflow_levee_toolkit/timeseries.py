@@ -35,9 +35,9 @@ def plot_select(pstore, xlim=None, ylim=None, title=None, subset=None, figsize=(
     ax : matplotlib.axes.Axes
     """
     fig, ax = plt.subplots(figsize=figsize)
-    pstore.plots.oseries(ax=ax)
+    pstore.plots.oseries(ax=ax, progressbar=False)
     try:
-        pstore.plots.stresses(ax=ax)
+        pstore.plots.stresses(ax=ax, progressbar=False)
     except Exception:
         print("No stresses available in the Pastastore file")
 

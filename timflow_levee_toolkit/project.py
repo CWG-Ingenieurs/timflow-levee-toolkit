@@ -172,7 +172,10 @@ class Project:
         """Open (or create) the pastastore of a transect."""
         import pastastore as pst
 
-        conn = pst.PasConnector(self.settings["transect_folders"]["pastastore"], self.transect_dir(transect))
+        # verbose=False: no info message per library ("already exists"); warnings and errors are still shown
+        conn = pst.PasConnector(
+            self.settings["transect_folders"]["pastastore"], self.transect_dir(transect), verbose=False
+        )
         return pst.PastaStore(conn)
 
     # --- set up and overview
