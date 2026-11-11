@@ -409,15 +409,18 @@ def plot_geotop_lithology(geotop, line, zmin=-30, zmax=5):
 
 
 def plot_geotop_conductivity(geotop, line, variable="kh", zmin=-30, zmax=5, as_layers=False):
-    """Hydraulic conductivity from GeoTOP (default values per lithology class) along the line.
+    """Hydraulic conductivity of GeoTOP along the cross-section line.
 
-    Wraps `nlmod.read.geotop.add_kh_and_kv(geotop, nlmod.read.geotop.get_lithok_props())`
-    and `nlmod.plot.DatasetCrossSection(...).plot_array(...)`.
+    Plots `variable` of `geotop` with `nlmod.plot.DatasetCrossSection(...).plot_array(...)`,
+    on a stepped colour scale from 0.0001 to 100 m/d. Add kh and kv to GeoTOP
+    first, e.g. with `nlmod.read.geotop.add_kh_and_kv(geotop, df)` (see notebook 21).
+    Without them, the default kh per lithology class of nlmod is used
+    (`nlmod.read.geotop.get_lithok_props()`, with kv = kh).
 
     Parameters
     ----------
     geotop : xarray.Dataset
-        GeoTOP from `download_regis_geotop`.
+        GeoTOP, preferably with the variables 'kh' and 'kv'.
     line : sequence of (x, y)
         Cross-section line.
     variable : str, optional
@@ -430,8 +433,9 @@ def plot_geotop_conductivity(geotop, line, variable="kh", zmin=-30, zmax=5, as_l
     """
     import nlmod
 
-    props = nlmod.read.geotop.get_lithok_props()
-    gt = nlmod.read.geotop.add_kh_and_kv(geotop, props)
+    gt = geotop
+    if variable not in gt:
+        gt = nlmod.read.geotop.add_kh_and_kv(gt, nlmod.read.geotop.get_lithok_props())
     layer = "z"
     if as_layers:
         gt = nlmod.read.geotop.to_model_layers(gt)
