@@ -169,7 +169,14 @@ class Project:
         )
 
     def open_pastastore(self, transect):
-        """Open (or create) the pastastore of a transect."""
+        """Open (or create) the pastastore of a transect.
+
+        Wraps `pastastore.PastaStore(pastastore.PasConnector(name, path))`, with
+        the folder 'pastastore' of the transect (`transect_folders` in the
+        project settings). The returned `pastastore.PastaStore` has all methods
+        of pastastore, e.g. `pstore.oseries`, `pstore.get_oseries(name)` and
+        `pstore.plots`; see https://pastastore.readthedocs.io.
+        """
         import pastastore as pst
 
         # verbose=False: no info message per library ("already exists"); warnings and errors are still shown
