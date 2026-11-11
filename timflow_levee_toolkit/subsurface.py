@@ -121,6 +121,9 @@ def save_bro_locations(locations, gpkg_file):
 def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, figsize=(8, 8)):
     """Map of the BRO locations, with labels.
 
+    Each location is labelled with its id: the last 7 characters of the BRO id
+    (CPTs, boreholes, monitoring wells) or the NITG number (DINO borehole samples).
+
     The map is square around the extent, with a margin of 3% of its long side on each
     side; the extent is drawn as a dashed outline. A cross-section line that extends
     beyond the map is cut off at its edge.
@@ -164,11 +167,12 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
         if gdf is None or len(gdf) == 0:
             continue
         gdf.plot(ax=ax, markersize=20, **style)
-        if kind != "gbo":
-            for name, point in zip(gdf.index, gdf.geometry):
-                texts.append(ax.text(point.x, point.y, str(name)[-7:], fontsize=7, color=style["color"],
-                                     bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
-                                               edgecolor=style["color"], alpha=0.8)))
+        for name, point in zip(gdf.index, gdf.geometry):
+            # BRO ids without the leading zeros (CPT000000009297 -> 0009297); DINO samples: the whole NITG number
+            label = str(name) if kind == "gbo" else str(name)[-7:]
+            texts.append(ax.text(point.x, point.y, label, fontsize=7, color=style["color"],
+                                 bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                                           edgecolor=style["color"], alpha=0.8)))
     if line is not None:
         xs, ys = zip(*line)
         ax.plot(xs, ys, "k-", linewidth=1, label="cross-section")
