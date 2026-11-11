@@ -374,6 +374,9 @@ def read_timeseries_excel(path, sheet_name="timeseries", info_sheet="series_info
 def import_timeseries(pstore, timeseries, metadata=None, overwrite=False):
     """Add time series to a pastastore as oseries.
 
+    Wraps `pstore.conn.add_oseries(series, name, metadata=..., overwrite=...)`
+    for each column, with the metadata of that series.
+
     Parameters
     ----------
     pstore : pastastore.PastaStore

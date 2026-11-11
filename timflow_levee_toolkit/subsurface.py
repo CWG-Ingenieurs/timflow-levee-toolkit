@@ -4,6 +4,11 @@
   samples (GBO), with `brodata`;
 - REGIS and GeoTOP along the cross-section line, with `nlmod`.
 
+The functions are thin wrappers: each docstring names the `brodata` or
+`nlmod` call it uses, so you can also call these packages directly (as
+notebook 21 does for most steps). See https://github.com/ArtesiaWater/brodata
+and https://nlmod.readthedocs.io.
+
 `brodata` and `nlmod` are only needed for these functions (install the extra
 `timflow_levee_toolkit[subsurface]`), so they are imported inside them.
 """
@@ -30,8 +35,17 @@ class _SkipUnsupportedTags(logging.Filter):
 
 
 @contextmanager
-def _quiet_brodata():
-    """Hide the "Tag ... not supported" warnings of brodata within the block."""
+def quiet_brodata():
+    """Hide the "Tag ... not supported" warnings of brodata within the block.
+
+    brodata warns about every XML tag it does not read. These tags are not
+    needed here; other warnings and errors are still shown.
+
+    Examples
+    --------
+    >>> with tlt.quiet_brodata():
+    ...     cpt = brodata.cpt.get_characteristics(extent=extent)
+    """
     logger = logging.getLogger("brodata.util")
     skip = _SkipUnsupportedTags()
     logger.addFilter(skip)
@@ -46,6 +60,11 @@ def _quiet_brodata():
 # -----------------------------------------------------------------------------
 def get_bro_locations(extent):
     """Get the locations of BRO subsurface data within an extent.
+
+    Wraps `brodata.cpt.get_characteristics`, `brodata.bhr.get_characteristics`,
+    `brodata.gmw.get_characteristics` and `brodata.dino.get_boormonsterprofiel`
+    (each with `extent=extent`). A data type that fails is reported and set to
+    None, so it does not stop the others.
 
     Parameters
     ----------
@@ -70,7 +89,7 @@ def get_bro_locations(extent):
     locations = {}
     for kind, get in getters.items():
         try:
-            with _quiet_brodata():
+            with quiet_brodata():
                 locations[kind] = get()
         except Exception as e:  # a missing data type should not stop the others
             print(f"No {kind} locations: {type(e).__name__}: {e}")
@@ -205,8 +224,11 @@ def suggest_z_limits(locations):
 def download_cpt_graphs(cpt_locations, save_dir):
     """Download each CPT (XML) and its graph (SVG) from the BRO.
 
-    The combined graph against depth is used where available, otherwise the
-    graph against length.
+    Wraps `brodata.cpt.ConePenetrationTest.from_bro_id(bro_id, to_file=...)`
+    and `brodata.cpt.graph(...)`. The combined graph against depth is used
+    where available, otherwise the graph against length. Read a saved CPT with
+    `brodata.cpt.ConePenetrationTest(xml_file)` and plot it with
+    `brodata.plot.cone_penetration_test`.
     """
     import brodata
 
@@ -214,7 +236,7 @@ def download_cpt_graphs(cpt_locations, save_dir):
     save_dir.mkdir(parents=True, exist_ok=True)
     for bro_id in cpt_locations.index:
         fname_xml = save_dir / f"{bro_id}.xml"
-        with _quiet_brodata():
+        with quiet_brodata():
             brodata.cpt.ConePenetrationTest.from_bro_id(bro_id, to_file=fname_xml)
         fname_svg = save_dir / f"{bro_id}_depth.svg"
         brodata.cpt.graph(fname_xml, graphType="cptCombinedDepth", to_file=fname_svg)
@@ -226,6 +248,11 @@ def download_cpt_graphs(cpt_locations, save_dir):
 
 def download_bhr_graphs(bhr_locations, save_dir, z_limits):
     """Download each geotechnical borehole (XML) and its log (SVG) from the BRO.
+
+    Wraps `brodata.bhr.GeotechnicalBoreholeResearch.from_bro_id(bro_id, to_file=...)`
+    and `brodata.bhr.bhrgt_graph(...)`. Read a saved borehole with
+    `brodata.bhr.GeotechnicalBoreholeResearch(xml_file)` and plot it with
+    `brodata.plot.descriptive_borehole_log`.
 
     Parameters
     ----------
@@ -244,7 +271,7 @@ def download_bhr_graphs(bhr_locations, save_dir, z_limits):
     for bro_id in bhr_locations.index:
         fname_xml = save_dir / f"{bro_id}.xml"
         fname_svg = save_dir / f"{bro_id}.svg"
-        with _quiet_brodata():
+        with quiet_brodata():
             brodata.bhr.GeotechnicalBoreholeResearch.from_bro_id(bro_id, to_file=fname_xml)
         brodata.bhr.bhrgt_graph(fname_xml, to_file=fname_svg, asNAP=True,
                                 topNap=z_limits[1], bottomNap=z_limits[0])
@@ -258,7 +285,10 @@ def download_bhr_graphs(bhr_locations, save_dir, z_limits):
 
 
 def plot_dino_lithology(gbo_locations, line, ax=None):
-    """Lithology of the DINO borehole samples along the cross-section line."""
+    """Lithology of the DINO borehole samples along the cross-section line.
+
+    Wraps `brodata.plot.lithology_along_line(gbo_locations, line, kind="dino")`.
+    """
     import brodata
 
     if ax is None:
@@ -278,8 +308,41 @@ def extent_around_line(line, margin=100.0):
     return [min(xs) - margin, max(xs) + margin, min(ys) - margin, max(ys) + margin]
 
 
+def combined_layer_model(extent, geotop, regis_botm_layer="MSz1", geotop_layers=("HLc",)):
+    """Layer model of REGIS with the Holocene layers replaced by GeoTOP.
+
+    The same as `nlmod.read.regis.get_combined_layer_models(extent,
+    regis_botm_layer, geotop_layers=...)`, but with an already downloaded
+    GeoTOP and with the REGIS layer names as object: with pandas >= 3, xarray
+    cannot concatenate the string dtype of REGIS with GeoTOP (nlmod 0.11).
+
+    Parameters
+    ----------
+    extent : sequence of float
+        `[xmin, xmax, ymin, ymax]`.
+    geotop : xarray.Dataset
+        GeoTOP, from `nlmod.read.geotop.download_geotop(extent)`.
+    regis_botm_layer : str, optional
+        Deepest REGIS layer of the combined model. Default 'MSz1'.
+    geotop_layers : sequence of str, optional
+        REGIS layers replaced by GeoTOP. Default ('HLc',).
+
+    Returns
+    -------
+    xarray.Dataset
+    """
+    import nlmod
+
+    regis_layers = nlmod.read.regis.download_regis(extent, regis_botm_layer)
+    regis_layers = regis_layers.assign_coords(layer=regis_layers.layer.values.astype(object))
+    return nlmod.read.regis.add_geotop_to_regis_layers(regis_layers, geotop, layers=list(geotop_layers))
+
+
 def download_regis_geotop(extent, regis_botm_layer="MSz1", geotop_layers=("HLc",)):
     """Download REGIS, the combined REGIS-GeoTOP layer model and GeoTOP.
+
+    Wraps `nlmod.read.regis.download_regis`, `nlmod.read.geotop.download_geotop`
+    and `combined_layer_model`.
 
     Parameters
     ----------
@@ -301,17 +364,17 @@ def download_regis_geotop(extent, regis_botm_layer="MSz1", geotop_layers=("HLc",
         extent, variables=["top", "botm", "kh", "kv", "kD", "c"], drop_layer_dim_from_top=False
     )
     geotop = nlmod.read.geotop.download_geotop(extent, probabilities=True)
-    # Same as nlmod.read.regis.get_combined_layer_models, but with the layer names as object:
-    # with pandas >= 3, xarray cannot concatenate the string dtype of REGIS with GeoTOP (nlmod 0.11.1)
-    regis_layers = nlmod.read.regis.download_regis(extent, regis_botm_layer)
-    regis_layers = regis_layers.assign_coords(layer=regis_layers.layer.values.astype(object))
-    combined = nlmod.read.regis.add_geotop_to_regis_layers(regis_layers, geotop, layers=list(geotop_layers))
+    combined = combined_layer_model(extent, geotop, regis_botm_layer, geotop_layers)
     return {"regis": regis, "combined": combined, "geotop": geotop}
 
 
 def plot_layer_models(ds1, line, ds2=None, zmin=-30, zmax=5, title1="REGIS", title2="REGIS + GeoTOP",
                       min_label_area=1000):
-    """Cross-section of one or two layer models (e.g. REGIS and the combined model)."""
+    """Cross-section of one or two layer models (e.g. REGIS and the combined model).
+
+    Wraps `nlmod.plot.DatasetCrossSection` with `plot_layers` and `plot_grid`,
+    in the colours of `nlmod.read.regis.get_legend(kind="combined")`.
+    """
     import nlmod
     from nlmod.plot import DatasetCrossSection
 
@@ -331,7 +394,10 @@ def plot_layer_models(ds1, line, ds2=None, zmin=-30, zmax=5, title1="REGIS", tit
 
 
 def plot_geotop_lithology(geotop, line, zmin=-30, zmax=5):
-    """GeoTOP lithology class along the cross-section line."""
+    """GeoTOP lithology class along the cross-section line.
+
+    Wraps `nlmod.plot.geotop_lithok_in_cross_section(line, geotop)`.
+    """
     import nlmod
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -344,6 +410,9 @@ def plot_geotop_lithology(geotop, line, zmin=-30, zmax=5):
 
 def plot_geotop_conductivity(geotop, line, variable="kh", zmin=-30, zmax=5, as_layers=False):
     """Hydraulic conductivity from GeoTOP (default values per lithology class) along the line.
+
+    Wraps `nlmod.read.geotop.add_kh_and_kv(geotop, nlmod.read.geotop.get_lithok_props())`
+    and `nlmod.plot.DatasetCrossSection(...).plot_array(...)`.
 
     Parameters
     ----------

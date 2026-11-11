@@ -6,7 +6,7 @@ organised in the modules `project`, `timeseries`, `model`, `response`,
 `subsurface`, `maps` and `output`.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 from ._units import DEFAULT_UNITS
 from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
@@ -83,6 +83,7 @@ from .response import (
     plot_rf_peaks,
 )
 from .subsurface import (
+    quiet_brodata,
     get_bro_locations,
     save_bro_locations,
     plot_bro_locations,
@@ -91,6 +92,7 @@ from .subsurface import (
     download_bhr_graphs,
     plot_dino_lithology,
     extent_around_line,
+    combined_layer_model,
     download_regis_geotop,
     plot_layer_models,
     plot_geotop_lithology,
@@ -166,6 +168,7 @@ __all__ = [
     "combine_rf_profiles",
     "plot_rf_x",
     "plot_rf_peaks",
+    "quiet_brodata",
     "get_bro_locations",
     "save_bro_locations",
     "plot_bro_locations",
@@ -174,6 +177,7 @@ __all__ = [
     "download_bhr_graphs",
     "plot_dino_lithology",
     "extent_around_line",
+    "combined_layer_model",
     "download_regis_geotop",
     "plot_layer_models",
     "plot_geotop_lithology",

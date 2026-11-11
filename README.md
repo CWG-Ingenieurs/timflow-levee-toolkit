@@ -1,6 +1,6 @@
 # timflow-levee-toolkit
 
-[![version](https://img.shields.io/badge/version-0.1.3-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
+[![version](https://img.shields.io/badge/version-0.1.4-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
 [![documentation](https://readthedocs.org/projects/timflow-levee-toolkit/badge/?version=stable)](https://timflow-levee-toolkit.readthedocs.io/en/stable/)
 
 Piezometer analysis of levees with Timflow.
@@ -29,9 +29,25 @@ For each transect (a cross-section through the levee, perpendicular to the river
 3. The model is calibrated on the observed heads (transmissivity, resistance, storage).
 4. The calibrated model gives response factors along the cross-section: steady state, tidal
    and for the design hydrograph (MHW: the storm event, with the *maatgevende hoogwaterstand* as its peak).
-   Leakage lengths of foreland and hinterland are fitted to these, following the
+   The leakage factors of foreland and hinterland follow from the model schematisation, as in the
    *Technisch Rapport Waterspanningen bij Dijken* (TAW, 2004).
 5. The heads during a storm event (river level of a given return period) are calculated.
+
+## Built on
+
+The toolkit combines a few open-source packages. The notebooks call them directly where that is one
+step, so they also show how to use them; the toolkit adds what is specific to this workflow (project
+folders, the geohydrological scheme, response factors, figures). Where a toolkit function wraps one of
+these packages, its docstring names the call it uses.
+
+| Package | Used for | Notebooks |
+|---|---|---|
+| [Timflow](https://github.com/timflow-org/timflow) ([docs](https://timflow.readthedocs.io)) | steady and transient cross-section models, calibration | 52 |
+| [pastastore](https://github.com/pastas/pastastore) ([docs](https://pastastore.readthedocs.io)) | storage of the time series, one store per transect | 10, 11, 12, 15, 51 |
+| [hydropandas](https://github.com/ArtesiaWater/hydropandas) ([docs](https://hydropandas.readthedocs.io)) | download of BRO groundwater levels and Rijkswaterstaat river levels | 11, 12 |
+| [brodata](https://github.com/ArtesiaWater/brodata) | BRO CPTs, boreholes and monitoring wells, DINO borehole samples | 21 |
+| [nlmod](https://github.com/gwmod/nlmod) ([docs](https://nlmod.readthedocs.io)) | REGIS and GeoTOP layer models (TNO) | 21 |
+| [geopandas](https://geopandas.org) and [contextily](https://contextily.readthedocs.io) | maps with a background | 01, 15, 21 |
 
 ## Getting started
 
@@ -115,7 +131,7 @@ known vulnerabilities with `pip-audit`: a fix for a direct dependency is propose
 minimum version in `pyproject.toml`); other findings are reported in an issue with the label `security`.
 
 The version is set in `__version__` in `timflow_levee_toolkit/__init__.py`, and each release is tagged
-(`v0.1.0`, ...). The version badge at the top of this README is static (the repository is private): update it
+(`v0.1.0`, ...). The version badge at the top of this README is static: update it
 together with `__version__`; a test checks that they match. The notebooks print the version, so the executed notebooks record which version
 produced the results. To reproduce results of a project, check out the tag in your clone (`git checkout v0.1.0`).
 
