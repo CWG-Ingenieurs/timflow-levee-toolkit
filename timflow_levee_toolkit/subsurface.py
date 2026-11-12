@@ -94,7 +94,9 @@ def get_bro_locations(extent):
         except Exception as e:  # a missing data type should not stop the others
             print(f"No {kind} locations: {type(e).__name__}: {e}")
             locations[kind] = None
-        # The DINO samples come without a coordinate reference system; like the extent, they are in RD New
+        # OLD style (until brodata PR #62 is released; toolkit issue #56): the DINO samples come without a
+        # coordinate reference system (https://github.com/ArtesiaWater/brodata/issues/61); like the extent,
+        # they are in RD New. NEW style: brodata sets EPSG:28992 itself; then remove these three lines.
         gdf = locations[kind]
         if gdf is not None and hasattr(gdf, "set_crs") and gdf.crs is None:
             locations[kind] = gdf.set_crs(28992)
