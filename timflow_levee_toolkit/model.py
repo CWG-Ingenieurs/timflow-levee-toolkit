@@ -1027,6 +1027,8 @@ def make_obslocs(piezometers):
         Indexed by piezometer name ('name', or 'locatie' if 'name' is
         missing) with columns 'x_crosssection', 'modellayer' and any of
         the optional columns that are present (e.g. 'use_calibration').
+        Piezometers without 'x_crosssection' or 'modellayer' (e.g. a filter
+        that is not in an aquifer of the model) are left out, with a message.
     """
     required = ["x_crosssection", "modellayer"]
     missing = [col for col in required if col not in piezometers.columns]
@@ -1038,6 +1040,12 @@ def make_obslocs(piezometers):
                 "series_ID", "use_calibration", "remark"]
     cols = required + [col for col in optional if col in piezometers.columns]
     obslocs = pd.DataFrame(piezometers[cols])
+
+    empty = obslocs[required].isna().any(axis=1)
+    if empty.any():
+        names = obslocs.loc[empty, "name"] if "name" in obslocs.columns else obslocs.index[empty]
+        print(f"Not in the model (no x_crosssection or modellayer): {list(names)}")
+        obslocs = obslocs[~empty]
 
     for index_col in ("name", "locatie"):
         if index_col in obslocs.columns:
