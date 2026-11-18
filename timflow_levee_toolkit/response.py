@@ -4,6 +4,8 @@ The `calculate_rf_*` functions work on (time series of) heads, so the same
 function is used for modeled and observed heads.
 """
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -115,7 +117,7 @@ def _find_peaks_in_series(series, min_peak_period):
     return t[peaks], h[peaks]
 
 
-def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6 / 24)):
+def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6 / 24), low_peak=0.25):
     """Calculate a response factor and time lag for every tidal peak.
 
     The peaks of the river are detected with `scipy.signal.find_peaks`, with
@@ -151,6 +153,12 @@ def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6
         piezometer is searched. Default is from one hour before to six hours
         after the river peak (about half a tidal period: the head lags behind
         the river, but does not reach the next tide).
+    low_peak : float, optional
+        A warning is given if river peaks are lower than `low_peak` times the
+        median river peak (both relative to the average river level). Such
+        peaks occur with a trend in the period, and their response factors
+        are meaningless (division by a value near zero, or a negative one).
+        Default is 0.25.
 
     Returns
     -------
@@ -162,6 +170,15 @@ def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6
     columns = ["obsloc", "t_peak_river", "t_peak_piezo", "h_peak_river",
                "h_peak_piezo", "t_offset", "response_factor"]
     t_river, h_peak_river = _find_peaks_in_series(h_river, min_peak_period)
+    if len(h_peak_river) > 0:
+        low = h_peak_river < low_peak * np.median(h_peak_river)
+        if low.any():
+            warnings.warn(
+                f"{low.sum()} of {len(h_peak_river)} river peaks are lower than {low_peak} times the median "
+                "river peak (relative to the average river level), probably by a trend in the period. "
+                "Their response factors are unreliable; check the period with `check_trend`.",
+                stacklevel=2,
+            )
 
     records = []
     for col, series in h_t.items():

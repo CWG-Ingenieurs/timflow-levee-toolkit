@@ -91,3 +91,16 @@ def test_combine_rf_sorted_and_without_duplicate_columns():
     assert list(df.columns) == ["x_crosssection", "modellayer", "rf_steady_mod", "rf_tidal_mod"]
     assert list(df.index) == ["toe_shallow", "toe_deep", "far"]
     assert df.index.name == "obsloc"
+
+
+def test_rf_peaks_warns_for_low_river_peaks():
+    # A trend of 3 m over 5 days: relative to the average, the last river peaks lie below zero
+    river = tidal_series() - 3.0 * (tidal_series().index.to_numpy() / 5.0 - 0.5)
+    heads = pd.DataFrame({"piezo": 0.5 * river})
+    with pytest.warns(UserWarning, match="river peaks are lower than"):
+        tlt.calculate_rf_peaks(heads, river)
+
+
+def test_rf_peaks_no_warning_for_a_regular_tide(recwarn):
+    tlt.calculate_rf_peaks(pd.DataFrame({"piezo": tidal_series(amplitude=0.4)}), tidal_series())
+    assert not [w for w in recwarn if "river peaks" in str(w.message)]
