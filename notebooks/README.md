@@ -74,8 +74,8 @@ default layout:
         ├── pastastore/                    (created by notebook 10, 11 or 12)
         ├── subsurface/                    (created by notebook 21)
         ├── timeseries/                    (created by notebook 51)
-        ├── results_intermediate/
-        └── results_final/
+        ├── results_intermediate/          (other figures of notebook 52, only with save_all_figures = True)
+        └── results_final/                 (main figures and tables of notebook 52)
 ```
 
 ## Why is the model notebook not split further?

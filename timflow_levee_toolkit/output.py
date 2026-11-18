@@ -48,6 +48,7 @@ def finalize_and_save(
     show: bool = True,
     close: bool = True,
     file_label: str | None = None,
+    save: bool = True,
 ) -> None:
     """Add a suptitle and timestamp to a figure, save it, then show/close it.
 
@@ -82,6 +83,10 @@ def finalize_and_save(
         Label in the filename instead of `project_name`, e.g. only the
         transect name when the folder already identifies the project, to
         keep paths short. Default is None (use `project_name`).
+    save : bool, optional
+        Whether to save the figure. With `False` the figure is only finished
+        off and shown, e.g. for figures that are kept in the executed notebook
+        only. Default is `True`.
 
     Notes
     -----
@@ -98,11 +103,12 @@ def finalize_and_save(
         0.9, 0.01, f"Created with timflow-levee-toolkit {__version__} on {timestamp:%Y-%m-%d %H:%M:%S}",
         ha="right", fontsize=7,
     )
-    label = project_name if file_label is None else file_label
-    name_parts = ["timflow", label, f"{timestamp:%Y%m%d_%H%M%S}", tag, modelrun.lower()]
-    Path(savefolder).mkdir(parents=True, exist_ok=True)
-    fn_out = _fit_filename(savefolder, name_parts, ".pdf")
-    f.savefig(Path(savefolder) / fn_out)
+    if save:
+        label = project_name if file_label is None else file_label
+        name_parts = ["timflow", label, f"{timestamp:%Y%m%d_%H%M%S}", tag, modelrun.lower()]
+        Path(savefolder).mkdir(parents=True, exist_ok=True)
+        fn_out = _fit_filename(savefolder, name_parts, ".pdf")
+        f.savefig(Path(savefolder) / fn_out)
     if show:
         plt.show()
     if close:
