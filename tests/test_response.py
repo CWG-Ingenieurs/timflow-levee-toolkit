@@ -106,13 +106,22 @@ def test_rf_peaks_no_warning_for_a_regular_tide(recwarn):
     assert not [w for w in recwarn if "river peaks" in str(w.message)]
 
 
-def test_fit_leakage_lengths_recovers_the_trwd_profile():
-    x = np.linspace(-100, 1000, 111)  # the foreland part (x < 0) is not used
-    r = tlt.response_profile_trwd(x, 150.0, 1800.0)
-    r[x < 0] = 2.0
-    fit = tlt.fit_leakage_lengths(pd.DataFrame({0: 0.5 * r, 1: r}, index=x))  # deepest layer
+def test_fit_leakage_lengths_on_the_piezometers():
+    x = [-5.0, 0.0, 40.0, 80.0, 180.0, 0.0]
+    df_rf = pd.DataFrame({
+        "x_crosssection": x,
+        "modellayer": [1, 1, 1, 1, 1, 0],
+        "rf_mhw_mod": tlt.response_profile_trwd(np.array(x), 150.0, 900.0),
+    }, index=[f"pb{i}" for i in range(len(x))])
+    df_rf.loc["pb0", "rf_mhw_mod"] = 2.0  # x < 0: not used
+    df_rf.loc["pb5", "rf_mhw_mod"] = 0.1  # other layer: not used
+    fit = tlt.fit_leakage_lengths(df_rf, "rf_mhw_mod")  # deepest layer
     assert fit["leakage_length_riverside_m"] == pytest.approx(150.0, rel=1e-6)
-    assert fit["leakage_length_landside_m"] == pytest.approx(1800.0, rel=1e-6)
+    assert fit["leakage_length_landside_m"] == pytest.approx(900.0, rel=1e-6)
     assert fit["r_squared"] == pytest.approx(1.0)
-    assert fit["n_points"] == (x >= 0).sum()
-    assert tlt.response_profile_trwd(0.0, 150.0, 1800.0) == pytest.approx(1 / (1 + 150 / 1800))
+    assert (fit["n_points"], fit["layer"], fit["column"]) == (4, 1, "rf_mhw_mod")
+    assert tlt.response_profile_trwd(0.0, 150.0, 900.0) == pytest.approx(1 / (1 + 150 / 900))
+    fig, ax = tlt.plot_leakage_lengths(df_rf, {"MHW": fit})
+    assert any("λ3 = 900 m" in t.get_text() for t in ax.get_legend().get_texts())
+    with pytest.raises(ValueError, match="at least two"):
+        tlt.fit_leakage_lengths(df_rf, "rf_mhw_mod", layer=0)
