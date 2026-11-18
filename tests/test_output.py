@@ -36,9 +36,22 @@ def test_finalize_and_save_creates_folder_and_uses_file_label(tmp_path):
                           show=False, file_label="Transect")
     footer = [t.get_text() for t in f.texts if t.get_text().startswith("Created with")]
     assert footer and footer[0].startswith(f"Created with timflow-levee-toolkit {tlt.__version__} on ")
-    files = list(Path(folder).glob("*.pdf"))
+    files = list(Path(folder).glob("*.png"))  # PNG by default
     assert len(files) == 1
-    assert files[0].name.startswith("timflow_Transect_") and files[0].name.endswith("_test_run 1.pdf")
+    assert files[0].name.startswith("timflow_Transect_") and files[0].name.endswith("_test_run 1.png")
+
+
+def test_figure_format_from_project_settings(tmp_path):
+    (tmp_path / "project_settings.toml").write_text('[figures]\nformat = "pdf"\n', encoding="utf-8")
+    try:
+        tlt.load_project(tmp_path)
+        f, ax = plt.subplots()
+        tlt.finalize_and_save(f, tmp_path / "out", tag="test", show=False)
+        assert [p.suffix for p in (tmp_path / "out").iterdir()] == [".pdf"]
+        with pytest.raises(ValueError, match="not supported"):
+            tlt.set_figure_format("bmp")
+    finally:
+        tlt.set_figure_format("png", 200)  # the default, for the other tests
 
 
 def test_export_to_excel_round_trip_and_formats(tmp_path):
