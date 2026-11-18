@@ -32,3 +32,7 @@ head = "m NAP"                          # absolute heads (vertical datum)
 head_rel = "m"                          # heads relative to an average (fluctuations)
 time = "days"
 x = "m"
+
+[figures]                               # figures saved by the notebooks (finalize_and_save)
+format = "png"                          # "png" (for reports), "pdf" (vector graphics), "svg" or "jpg"
+dpi = 200                               # resolution of png and jpg

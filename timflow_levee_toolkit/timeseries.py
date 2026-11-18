@@ -1,9 +1,11 @@
 """Observed time series: import from Excel into a pastastore, select, summarize and plot.
 """
 
+import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from ._units import _label
@@ -99,6 +101,58 @@ def to_days(times, start):
     """
     days = (pd.DatetimeIndex(times) - pd.Timestamp(start)).total_seconds() / 3600 / 24
     return pd.Index(days, name="Time [days]")
+
+
+def check_trend(obs, max_change=0.25, window=25 / 24):
+    """Check the model period for a trend in the daily mean of the heads and the river level.
+
+    The model period should have a fairly constant daily mean: with a trend, the tidal response
+    is mixed with a slow change. The tidal peaks at the end of the period then lie around or below
+    the mean of the period, and the tidal response factors of notebook 52 become meaningless. The
+    tide is filtered out with a centred moving average over `window` (25 hours: about two tidal
+    periods); the change is the range (max - min) of this daily mean, without the first and last
+    half window, where the average is incomplete.
+
+    Parameters
+    ----------
+    obs : pandas.DataFrame
+        Observations of the model period with the time in days as index (e.g. `obs_ref` of
+        notebook 51) and one column per series.
+    max_change : float, optional
+        Largest acceptable change of the daily mean in the model period, in the unit of the
+        heads. Default is 0.25 (m). A warning is given for each series above it.
+    window : float, optional
+        Width of the moving average [days]. Default is 25/24 (25 hours).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Per series: 'change' (range of the daily mean), 'start' and 'end' (daily mean at the
+        start and end of the period) and 'trend' (True if 'change' exceeds `max_change`).
+    """
+    t = pd.to_timedelta(np.asarray(obs.index, dtype=float), unit="D")
+    index_td = pd.TimedeltaIndex(t)
+    half = pd.Timedelta(days=window / 2)
+    rows = {}
+    for name, series in obs.items():
+        s = pd.Series(series.to_numpy(dtype=float), index=index_td).dropna().sort_index()
+        if len(s) < 2 or s.index[-1] - s.index[0] <= 2 * half:
+            rows[name] = {"change": np.nan, "start": np.nan, "end": np.nan}
+            continue
+        daily = s.rolling(pd.Timedelta(days=window), center=True).mean()
+        daily = daily[(daily.index >= s.index[0] + half) & (daily.index <= s.index[-1] - half)]
+        rows[name] = {"change": daily.max() - daily.min(), "start": daily.iloc[0], "end": daily.iloc[-1]}
+    table = pd.DataFrame.from_dict(rows, orient="index")
+    table.index.name = "series"
+    table["trend"] = table["change"] > max_change
+    if table["trend"].any():
+        names = ", ".join(f"{n} ({c:.2f})" for n, c in table.loc[table["trend"], "change"].items())
+        warnings.warn(
+            f"Trend in the model period: the daily mean changes more than {max_change} for {names}. "
+            "The tidal response factors may be unreliable; consider a calmer period.",
+            stacklevel=2,
+        )
+    return table
 
 
 OBSERVATIONS_EXPLANATION = [

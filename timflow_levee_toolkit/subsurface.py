@@ -94,7 +94,9 @@ def get_bro_locations(extent):
         except Exception as e:  # a missing data type should not stop the others
             print(f"No {kind} locations: {type(e).__name__}: {e}")
             locations[kind] = None
-        # The DINO samples come without a coordinate reference system; like the extent, they are in RD New
+        # OLD style (until brodata PR #62 is released; toolkit issue #56): the DINO samples come without a
+        # coordinate reference system (https://github.com/ArtesiaWater/brodata/issues/61); like the extent,
+        # they are in RD New. NEW style: brodata sets EPSG:28992 itself; then remove these three lines.
         gdf = locations[kind]
         if gdf is not None and hasattr(gdf, "set_crs") and gdf.crs is None:
             locations[kind] = gdf.set_crs(28992)
@@ -120,6 +122,9 @@ def save_bro_locations(locations, gpkg_file):
 
 def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, figsize=(8, 8)):
     """Map of the BRO locations, with labels.
+
+    Each location is labelled with its id: the last 7 characters of the BRO id
+    (CPTs, boreholes, monitoring wells) or the NITG number (DINO borehole samples).
 
     The map is square around the extent, with a margin of 3% of its long side on each
     side; the extent is drawn as a dashed outline. A cross-section line that extends
@@ -164,11 +169,12 @@ def plot_bro_locations(locations, extent, line=None, title=None, basemap=True, f
         if gdf is None or len(gdf) == 0:
             continue
         gdf.plot(ax=ax, markersize=20, **style)
-        if kind != "gbo":
-            for name, point in zip(gdf.index, gdf.geometry):
-                texts.append(ax.text(point.x, point.y, str(name)[-7:], fontsize=7, color=style["color"],
-                                     bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
-                                               edgecolor=style["color"], alpha=0.8)))
+        for name, point in zip(gdf.index, gdf.geometry):
+            # BRO ids without the leading zeros (CPT000000009297 -> 0009297); DINO samples: the whole NITG number
+            label = str(name) if kind == "gbo" else str(name)[-7:]
+            texts.append(ax.text(point.x, point.y, label, fontsize=7, color=style["color"],
+                                 bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                                           edgecolor=style["color"], alpha=0.8)))
     if line is not None:
         xs, ys = zip(*line)
         ax.plot(xs, ys, "k-", linewidth=1, label="cross-section")
@@ -409,15 +415,18 @@ def plot_geotop_lithology(geotop, line, zmin=-30, zmax=5):
 
 
 def plot_geotop_conductivity(geotop, line, variable="kh", zmin=-30, zmax=5, as_layers=False):
-    """Hydraulic conductivity from GeoTOP (default values per lithology class) along the line.
+    """Hydraulic conductivity of GeoTOP along the cross-section line.
 
-    Wraps `nlmod.read.geotop.add_kh_and_kv(geotop, nlmod.read.geotop.get_lithok_props())`
-    and `nlmod.plot.DatasetCrossSection(...).plot_array(...)`.
+    Plots `variable` of `geotop` with `nlmod.plot.DatasetCrossSection(...).plot_array(...)`,
+    on a stepped colour scale from 0.0001 to 100 m/d. Add kh and kv to GeoTOP
+    first, e.g. with `nlmod.read.geotop.add_kh_and_kv(geotop, df)` (see notebook 21).
+    Without them, the default kh per lithology class of nlmod is used
+    (`nlmod.read.geotop.get_lithok_props()`, with kv = kh).
 
     Parameters
     ----------
     geotop : xarray.Dataset
-        GeoTOP from `download_regis_geotop`.
+        GeoTOP, preferably with the variables 'kh' and 'kv'.
     line : sequence of (x, y)
         Cross-section line.
     variable : str, optional
@@ -430,8 +439,9 @@ def plot_geotop_conductivity(geotop, line, variable="kh", zmin=-30, zmax=5, as_l
     """
     import nlmod
 
-    props = nlmod.read.geotop.get_lithok_props()
-    gt = nlmod.read.geotop.add_kh_and_kv(geotop, props)
+    gt = geotop
+    if variable not in gt:
+        gt = nlmod.read.geotop.add_kh_and_kv(gt, nlmod.read.geotop.get_lithok_props())
     layer = "z"
     if as_layers:
         gt = nlmod.read.geotop.to_model_layers(gt)

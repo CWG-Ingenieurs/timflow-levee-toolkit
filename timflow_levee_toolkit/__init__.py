@@ -6,13 +6,14 @@ organised in the modules `project`, `timeseries`, `model`, `response`,
 `subsurface`, `maps` and `output`.
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 from ._units import DEFAULT_UNITS
 from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
 from .versions import show_versions
 from .output import (
     finalize_and_save,
+    set_figure_format,
     export_to_excel,
 )
 from .project import (
@@ -36,6 +37,7 @@ from .timeseries import (
     plot_select,
     clip_data,
     to_days,
+    check_trend,
     write_observations,
     read_observations,
     plot_daily_situation,
@@ -70,6 +72,9 @@ from .model import (
 )
 from .response import (
     calculate_flow_resistance,
+    response_profile_trwd,
+    fit_leakage_lengths,
+    plot_leakage_lengths,
     calculate_rf_steady,
     calculate_rf_peaks,
     summarize_rf_tidal,
@@ -108,6 +113,7 @@ __all__ = [
     "plot_transect_map",
     "show_versions",
     "finalize_and_save",
+    "set_figure_format",
     "export_to_excel",
     "DEFAULT_SETTINGS",
     "METADATA_REQUIRED",
@@ -127,6 +133,7 @@ __all__ = [
     "plot_select",
     "clip_data",
     "to_days",
+    "check_trend",
     "write_observations",
     "read_observations",
     "plot_daily_situation",
@@ -157,6 +164,9 @@ __all__ = [
     "read_storm_event",
     "plot_storm_event",
     "calculate_flow_resistance",
+    "response_profile_trwd",
+    "fit_leakage_lengths",
+    "plot_leakage_lengths",
     "calculate_rf_steady",
     "calculate_rf_peaks",
     "summarize_rf_tidal",

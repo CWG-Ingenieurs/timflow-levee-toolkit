@@ -30,3 +30,25 @@ def test_observations_round_trip(tmp_path):
     assert list(sheet.columns[:2]) == ["time", "days since start"]
     assert sheet["time"].iloc[1] == pd.Timestamp("2025-12-01 00:04:56")
     assert sheet["days since start"].iloc[1] == pytest.approx(296 / 86400)
+
+
+def _tide_with_trend(drop):
+    t = np.arange(0, 7, 10 / 1440)
+    return pd.Series(np.sin(2 * np.pi * t / (12.42 / 24)) - drop * t / 7, index=pd.Index(t, name="Time [days]"))
+
+
+def test_check_trend_warns_for_a_trend():
+    obs = pd.DataFrame({"river": _tide_with_trend(0.6), "calm": _tide_with_trend(0.0)})
+    obs["polder_level"] = -1.92
+    with pytest.warns(UserWarning, match="Trend in the model period.*river"):
+        table = tlt.check_trend(obs)
+    assert table.loc["river", "change"] == pytest.approx(0.6 * 6 / 7, abs=0.02)  # without the half windows
+    assert table.loc["calm", "change"] < 0.05  # 25 hours is not exactly two tidal periods
+    assert table.loc["polder_level", "change"] == 0
+    assert list(table["trend"]) == [True, False, False]
+
+
+def test_check_trend_no_warning_without_trend(recwarn):
+    table = tlt.check_trend(pd.DataFrame({"calm": _tide_with_trend(0.0)}))
+    assert not table["trend"].any()
+    assert not [w for w in recwarn if "Trend" in str(w.message)]

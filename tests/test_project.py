@@ -72,3 +72,15 @@ def test_make_obslocs(example_dir):
     assert {"x_crosssection", "modellayer", "use_calibration"} <= set(obslocs.columns)
     with pytest.raises(KeyError, match="modellayer"):
         tlt.make_obslocs(table.drop(columns="modellayer"))
+
+
+def test_make_obslocs_without_modellayer(capsys):
+    piezometers = pd.DataFrame({
+        "name": ["deep", "shallow", "no_x"],
+        "x_crosssection": [10.0, 10.0, None],
+        "modellayer": [0.0, None, 0.0],
+        "use_calibration": [1, 0, 1],
+    })
+    obslocs = tlt.make_obslocs(piezometers)
+    assert obslocs.index.tolist() == ["deep"]
+    assert "shallow" in capsys.readouterr().out

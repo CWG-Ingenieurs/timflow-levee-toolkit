@@ -4,9 +4,12 @@ The `calculate_rf_*` functions work on (time series of) heads, so the same
 function is used for modeled and observed heads.
 """
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from ._units import _label
@@ -42,6 +45,144 @@ def calculate_flow_resistance(model_steady, inhom_name: str, layer: int = -1) ->
 
     leakagefactor = inhom.lab[0]
     return (leakagefactor / kD) * np.tanh(L / leakagefactor)
+
+
+def response_profile_trwd(x, leakage_length_riverside, leakage_length_landside):
+    """Response factor along x of the exponential model of the TRWD.
+
+    `r(x) = 1 / (1 + λ1 / λ3) · exp(-x / λ3)` in the hinterland (x >= 0 from the
+    inner toe), with λ1 the leakage length riverside and λ3 the leakage length
+    landside. Model 4A of the *Technisch Rapport Waterspanningen bij Dijken*
+    (TRWD, TAW 2004, appendix 4, p. b4-5 and b4-6) with W = λ/kD (long zones,
+    equal kD) and a levee without width (L2 = 0).
+
+    Parameters
+    ----------
+    x : array_like
+        Distance from the inner toe [m].
+    leakage_length_riverside, leakage_length_landside : float
+        λ1 and λ3 [m].
+
+    Returns
+    -------
+    numpy.ndarray
+        Response factor [-].
+    """
+    x = np.asarray(x, dtype=float)
+    return np.exp(-x / leakage_length_landside) / (1 + leakage_length_riverside / leakage_length_landside)
+
+
+def _fit_points(df_rf, column, layer=None):
+    """The piezometers used by `fit_leakage_lengths`: x >= 0 in `layer` (default the deepest)."""
+    if layer is None:
+        layer = int(df_rf["modellayer"].max())
+    selected = df_rf[(df_rf["modellayer"] == layer) & (df_rf["x_crosssection"] >= 0)]
+    return selected.dropna(subset=[column]).sort_values("x_crosssection"), layer
+
+
+def fit_leakage_lengths(df_rf, column, layer=None, p0=(300.0, 1000.0)):
+    """Fit the exponential model of the TRWD to the response factors at the piezometers.
+
+    Gives the leakage lengths of an equivalent single-aquifer model with the
+    same response at the piezometers in the hinterland, see
+    `response_profile_trwd`. λ3 (landside) follows from how fast the response
+    decreases from piezometer to piezometer; λ1 (riverside) only from the
+    level of the response at the inner toe (`1 / (1 + λ1 / λ3)`), so it also
+    contains the effect of the river bed and the foreland: it is not the
+    leakage factor of the river zone. For the design hydrograph (MHW) the
+    leakage lengths are *equivalent* ones that include the damping by storage.
+
+    Parameters
+    ----------
+    df_rf : pandas.DataFrame
+        Response factors per piezometer with columns 'x_crosssection',
+        'modellayer' and `column`, e.g. from `calculate_rf_steady`,
+        `calculate_rf_mhw` or `combine_rf`.
+    column : str
+        Column to fit, e.g. 'rf_steady_mod' or 'rf_mhw_mod'.
+    layer : int, optional
+        Model layer of the piezometers to use. Default is the deepest layer
+        in `df_rf` (as for the flow resistances W1 and W3). Only piezometers
+        at x >= 0 (inner toe and hinterland) are used.
+    p0 : tuple of float, optional
+        Initial guess (λ1, λ3) [m]. Both are bounded to positive values.
+
+    Returns
+    -------
+    pandas.Series
+        'leakage_length_riverside_m', 'leakage_length_landside_m', 'r_squared'
+        [-], 'n_points', 'layer' and 'column'.
+    """
+    points, layer = _fit_points(df_rf, column, layer)
+    if len(points) < 2:
+        raise ValueError(f"{len(points)} piezometers at x >= 0 in layer {layer}: at least two are needed for the fit")
+    x = points["x_crosssection"].to_numpy(dtype=float)
+    r = points[column].to_numpy(dtype=float)
+    (lab1, lab3), _ = curve_fit(response_profile_trwd, x, r, p0=p0, bounds=(0, np.inf))
+    residual = r - response_profile_trwd(x, lab1, lab3)
+    total = np.sum((r - r.mean()) ** 2)
+    r_squared = 1 - np.sum(residual**2) / total if total > 0 else np.nan
+    return pd.Series({
+        "leakage_length_riverside_m": lab1,
+        "leakage_length_landside_m": lab3,
+        "r_squared": r_squared,
+        "n_points": len(x),
+        "layer": layer,
+        "column": column,
+    })
+
+
+def plot_leakage_lengths(df_rf, fits, profiles=None, xmax=None, figsize=(10, 4), units=None):
+    """Plot the fits of `fit_leakage_lengths`: piezometers, fitted curve and (optionally) the model profile.
+
+    Per fitted column one color: the response factors at the piezometers used
+    in the fit (filled markers), the fitted exponential curve of the TRWD
+    (dashed, from the inner toe) with λ1 and λ3 in the legend, and the modeled
+    response factor along x of the same layer (thin line), if given.
+
+    Parameters
+    ----------
+    df_rf : pandas.DataFrame
+        The response factors that were fitted (see `fit_leakage_lengths`).
+    fits : dict
+        Per label (e.g. "steady", "MHW") the result of `fit_leakage_lengths`.
+    profiles : dict, optional
+        Per label a profile along x from the `calculate_rf_*_x` functions.
+    xmax : float, optional
+        End of the fitted curve [m]. Default: the largest x of the profiles,
+        or 1.5 times the farthest piezometer.
+    figsize : tuple of float, optional
+        Figure size. Default is (10, 4).
+    units : dict, optional
+        Units for the axis labels, see `DEFAULT_UNITS` (key 'x').
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    ax : matplotlib.axes.Axes
+    """
+    fig, ax = plt.subplots(figsize=figsize, layout="constrained")
+    for i, (label, fit) in enumerate(fits.items()):
+        color = f"C{i}"
+        points, layer = _fit_points(df_rf, fit["column"], int(fit["layer"]))
+        profile = (profiles or {}).get(label)
+        if profile is not None and layer in profile.columns:
+            ax.plot(profile.index, profile[layer], color=color, lw=1, alpha=0.6, label=f"{label}: model (layer {layer})")
+        end = xmax
+        if end is None:
+            end = profile.index.max() if profile is not None else 1.5 * points["x_crosssection"].max()
+        x = np.linspace(0, end, 200)
+        lab1, lab3 = fit["leakage_length_riverside_m"], fit["leakage_length_landside_m"]
+        ax.plot(x, response_profile_trwd(x, lab1, lab3), "--", color=color,
+                label=f"{label}: fit TRWD, λ1 = {lab1:.0f} m, λ3 = {lab3:.0f} m")
+        ax.plot(points["x_crosssection"], points[fit["column"]], "o", color=color,
+                label=f"{label}: piezometers in the fit ({len(points)})")
+    ax.axvline(0, color="0.5", lw=0.8)
+    ax.set_xlabel(_label("x", units, "x"))
+    ax.set_ylabel("response factor [-]")
+    ax.legend(loc=(0, 1), frameon=False, ncol=2, fontsize="x-small")
+    ax.grid(True)
+    return fig, ax
 
 
 # -----------------------------------------------------------------------------
@@ -115,7 +256,7 @@ def _find_peaks_in_series(series, min_peak_period):
     return t[peaks], h[peaks]
 
 
-def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6 / 24)):
+def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6 / 24), low_peak=0.25):
     """Calculate a response factor and time lag for every tidal peak.
 
     The peaks of the river are detected with `scipy.signal.find_peaks`, with
@@ -151,6 +292,12 @@ def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6
         piezometer is searched. Default is from one hour before to six hours
         after the river peak (about half a tidal period: the head lags behind
         the river, but does not reach the next tide).
+    low_peak : float, optional
+        A warning is given if river peaks are lower than `low_peak` times the
+        median river peak (both relative to the average river level). Such
+        peaks occur with a trend in the period, and their response factors
+        are meaningless (division by a value near zero, or a negative one).
+        Default is 0.25.
 
     Returns
     -------
@@ -162,6 +309,15 @@ def calculate_rf_peaks(h_t, h_river, min_peak_period=11 / 24, window=(-1 / 24, 6
     columns = ["obsloc", "t_peak_river", "t_peak_piezo", "h_peak_river",
                "h_peak_piezo", "t_offset", "response_factor"]
     t_river, h_peak_river = _find_peaks_in_series(h_river, min_peak_period)
+    if len(h_peak_river) > 0:
+        low = h_peak_river < low_peak * np.median(h_peak_river)
+        if low.any():
+            warnings.warn(
+                f"{low.sum()} of {len(h_peak_river)} river peaks are lower than {low_peak} times the median "
+                "river peak (relative to the average river level), probably by a trend in the period. "
+                "Their response factors are unreliable; check the period with `check_trend`.",
+                stacklevel=2,
+            )
 
     records = []
     for col, series in h_t.items():

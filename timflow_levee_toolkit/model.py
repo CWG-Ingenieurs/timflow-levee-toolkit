@@ -754,28 +754,31 @@ def print_model_params(inhom_params):
             print(f"  {key:<6} = {value}")
 
 
-def _unique_tab_name(tab_name, existing):
-    """Return `tab_name`, or `tab_name` + timestamp if that tab already exists.
+def _unique_tab_name(tab_name, existing, timestamp=True):
+    """Return `tab_name` + timestamp, unique among the `existing` tab names.
 
-    Excel compares tab names case-insensitively and allows at most 31
-    characters, so the base name is shortened if needed to fit the
-    timestamp (format `%Y%m%d_%H%M%S`, as in `finalize_and_save`). If that
-    name exists as well (two writes within one second), a sequence number
-    is added.
+    With `timestamp=True` the timestamp (format `%Y%m%d_%H%M%S`, as in
+    `finalize_and_save`) is always added, e.g. 'calibrated_20261118_080220'.
+    With `timestamp=False` the name is used as it is, unless that tab already
+    exists; then the timestamp is added after all. Excel compares tab names
+    case-insensitively and allows at most 31 characters, so the base name is
+    shortened if needed to fit the timestamp. If that name exists as well
+    (two writes within one second), a sequence number is added.
     """
     existing = {name.lower() for name in existing}
-    if tab_name.lower() not in existing:
+    if not timestamp and tab_name.lower() not in existing:
         return tab_name
-    timestamp = f"_{dt.now():%Y%m%d_%H%M%S}"
-    suffix, n = timestamp, 1
+    stamp = f"_{dt.now():%Y%m%d_%H%M%S}"
+    suffix, n = stamp, 1
     while (unique := tab_name[: 31 - len(suffix)] + suffix).lower() in existing:
         n += 1
-        suffix = f"{timestamp}_{n}"
-    print(f"Tab '{tab_name}' already exists; using '{unique}' instead.")
+        suffix = f"{stamp}_{n}"
+    if not timestamp:
+        print(f"Tab '{tab_name}' already exists; using '{unique}' instead.")
     return unique
 
 
-def write_model_params(ml, excel_path, tab_name='calibrated'):
+def write_model_params(ml, excel_path, tab_name='calibrated', timestamp=True):
     """Write current model parameters to a new tab in the parameters Excel file.
 
     Counterpart of `read_model_params`: the written tab can be read back
@@ -796,11 +799,14 @@ def write_model_params(ml, excel_path, tab_name='calibrated'):
     excel_path : Path or str
         Path to the Excel parameters file.
     tab_name : str
-        Name of the sheet to write (default: 'calibrated'). If a tab with
-        this name already exists, a timestamp is appended (e.g.
-        'calibrated_20261021_160428') so existing results are never
-        overwritten. The tab name that was used is printed and stored in
-        `result.attrs["tab_name"]`.
+        Base name of the sheet to write (default: 'calibrated').
+    timestamp : bool
+        If True (default), a timestamp is always appended to `tab_name`
+        (e.g. 'calibrated_20261118_080220'), so every run gets its own tab
+        and it shows when the parameters were calibrated. If False, `tab_name`
+        is used as it is, unless that tab already exists: existing results
+        are never overwritten. The tab name that was used is printed and
+        stored in `result.attrs["tab_name"]`.
 
     Returns
     -------
@@ -841,10 +847,10 @@ def write_model_params(ml, excel_path, tab_name='calibrated'):
     mp_out = pd.DataFrame(rows, columns=columns)
     mp_out['layer'] = mp_out['layer'].astype(int)
 
-    # Never overwrite an existing tab: make the name unique with a timestamp
+    # A timestamp in the tab name; never overwrite an existing tab
     excel_path = Path(excel_path)
     book = load_workbook(excel_path)
-    tab_name = _unique_tab_name(tab_name, book.sheetnames)
+    tab_name = _unique_tab_name(tab_name, book.sheetnames, timestamp=timestamp)
     book.close()
 
     # Number formats per column
@@ -1027,6 +1033,8 @@ def make_obslocs(piezometers):
         Indexed by piezometer name ('name', or 'locatie' if 'name' is
         missing) with columns 'x_crosssection', 'modellayer' and any of
         the optional columns that are present (e.g. 'use_calibration').
+        Piezometers without 'x_crosssection' or 'modellayer' (e.g. a filter
+        that is not in an aquifer of the model) are left out, with a message.
     """
     required = ["x_crosssection", "modellayer"]
     missing = [col for col in required if col not in piezometers.columns]
@@ -1038,6 +1046,12 @@ def make_obslocs(piezometers):
                 "series_ID", "use_calibration", "remark"]
     cols = required + [col for col in optional if col in piezometers.columns]
     obslocs = pd.DataFrame(piezometers[cols])
+
+    empty = obslocs[required].isna().any(axis=1)
+    if empty.any():
+        names = obslocs.loc[empty, "name"] if "name" in obslocs.columns else obslocs.index[empty]
+        print(f"Not in the model (no x_crosssection or modellayer): {list(names)}")
+        obslocs = obslocs[~empty]
 
     for index_col in ("name", "locatie"):
         if index_col in obslocs.columns:

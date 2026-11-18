@@ -15,6 +15,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from .output import set_figure_format
+
 
 # -----------------------------------------------------------------------------
 # Project settings
@@ -45,6 +47,7 @@ DEFAULT_SETTINGS = {
         "final": "results_final",
     },
     "units": {"head": "m NAP", "head_rel": "m", "time": "days", "x": "m"},
+    "figures": {"format": "png", "dpi": 200},  # figures saved by `finalize_and_save`
 }
 
 # Columns of the transects metadata table
@@ -241,6 +244,9 @@ def load_project(project_dir, settings_file="project_settings.toml"):
         Name of the settings file in the project folder. Optional: without
         it the defaults in `DEFAULT_SETTINGS` are used.
 
+    Also sets the file format of the saved figures from the section
+    [figures] (PNG by default), see `set_figure_format`.
+
     Returns
     -------
     Project
@@ -251,7 +257,10 @@ def load_project(project_dir, settings_file="project_settings.toml"):
     if path.exists():
         with open(path, "rb") as fh:
             overrides = tomllib.load(fh)
-    return Project(project_dir, _merge(DEFAULT_SETTINGS, overrides))
+    settings = _merge(DEFAULT_SETTINGS, overrides)
+    # File format of the saved figures (finalize_and_save) for this project
+    set_figure_format(settings["figures"]["format"], settings["figures"]["dpi"])
+    return Project(project_dir, settings)
 
 
 # -----------------------------------------------------------------------------

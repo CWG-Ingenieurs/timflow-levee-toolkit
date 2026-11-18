@@ -67,12 +67,30 @@ DOTS = re.compile(r"(?m)^\.{3,}\n?")
 PROGRESS_BAR = re.compile(r"[^\r\n]*(?:\d+%\|[^\r\n|]*\||\d+it \[[^\]\r\n]*(?:it/s|s/it)\])[^\r\n]*[\r\n]*")
 
 
+def merge_streams(outputs):
+    """Merge consecutive outputs of the same stream (stdout or stderr) into one, as Jupyter shows them.
+
+    Output that is flushed in parts, e.g. one dot per model run of the calibration
+    (`print(".", end="", flush=True)`), is stored as one output per part.
+    """
+    merged = []
+    for output in outputs:
+        previous = merged[-1] if merged else None
+        if (output.get("output_type") == "stream" and previous is not None
+                and previous.get("output_type") == "stream" and previous["name"] == output["name"]):
+            previous["text"] += output["text"]
+        else:
+            merged.append(output)
+    return merged
+
+
 def strip_progress(nb):
     """Remove progress output (dots and tqdm progress bars) from the stream outputs of a notebook."""
     for cell in nb.cells:
         if cell.cell_type != "code":
             continue
-        for output in cell.get("outputs", []):
+        cell.outputs = merge_streams(cell.get("outputs", []))
+        for output in cell.outputs:
             if output.get("output_type") == "stream":
                 output["text"] = PROGRESS_BAR.sub("", DOTS.sub("", output["text"]))
         cell.outputs = [o for o in cell.get("outputs", []) if o.get("output_type") != "stream" or o["text"].strip()]
