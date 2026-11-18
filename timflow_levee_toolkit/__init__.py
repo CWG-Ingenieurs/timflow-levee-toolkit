@@ -13,6 +13,7 @@ from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
 from .versions import show_versions
 from .output import (
     finalize_and_save,
+    set_figure_format,
     export_to_excel,
 )
 from .project import (
@@ -109,6 +110,7 @@ __all__ = [
     "plot_transect_map",
     "show_versions",
     "finalize_and_save",
+    "set_figure_format",
     "export_to_excel",
     "DEFAULT_SETTINGS",
     "METADATA_REQUIRED",

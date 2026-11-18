@@ -1,4 +1,4 @@
-"""Saving figures and tables: `finalize_and_save` (PDF with title and timestamp) and `export_to_excel`.
+"""Saving figures and tables: `finalize_and_save` (PNG or PDF with title and timestamp) and `export_to_excel`.
 """
 
 from datetime import datetime as dt
@@ -10,6 +10,30 @@ from openpyxl.styles import Alignment
 
 
 _MAX_PATH = 259  # Windows path limit without long path support (MAX_PATH = 260 incl. terminator)
+
+# File format and resolution of the figures saved by `finalize_and_save`. `load_project` sets them from the
+# section [figures] of project_settings.toml; `set_figure_format` changes them.
+FIGURE_FORMAT = {"format": "png", "dpi": 200}
+_FORMATS = ("png", "pdf", "svg", "jpg")
+
+
+def set_figure_format(fmt="png", dpi=200):
+    """Set the file format and resolution of the figures saved by `finalize_and_save`.
+
+    `load_project` calls this with the section [figures] of project_settings.toml,
+    so normally it is set per project there.
+
+    Parameters
+    ----------
+    fmt : str, optional
+        'png' (default; for reports), 'pdf' (vector graphics), 'svg' or 'jpg'.
+    dpi : int, optional
+        Resolution of PNG and JPG files [dots per inch]. Default is 200.
+    """
+    fmt = str(fmt).lower().lstrip(".")
+    if fmt not in _FORMATS:
+        raise ValueError(f"figure format {fmt!r} not supported; choose from {_FORMATS}")
+    FIGURE_FORMAT.update(format=fmt, dpi=int(dpi))
 
 
 def _fit_filename(folder, name_parts, ext):
@@ -55,9 +79,11 @@ def finalize_and_save(
     Project-specific convenience for finishing off a figure returned by
     `plot_transient_results`, `plot_steady_results`, or any other
     `(fig, axes)`-returning plot call: adds the standard suptitle and
-    "Created with timflow-levee-toolkit <version> on ..." timestamp, saves a PDF named after
+    "Created with timflow-levee-toolkit <version> on ..." timestamp, saves it named after
     `file_label` (or `project_name`), `tag` and `modelrun`, then optionally
-    shows and closes the figure.
+    shows and closes the figure. The file format (PNG by default, or PDF) and
+    resolution are set per project in the section [figures] of
+    project_settings.toml, see `set_figure_format`.
 
     Parameters
     ----------
@@ -107,8 +133,8 @@ def finalize_and_save(
         label = project_name if file_label is None else file_label
         name_parts = ["timflow", label, f"{timestamp:%Y%m%d_%H%M%S}", tag, modelrun.lower()]
         Path(savefolder).mkdir(parents=True, exist_ok=True)
-        fn_out = _fit_filename(savefolder, name_parts, ".pdf")
-        f.savefig(Path(savefolder) / fn_out)
+        fn_out = _fit_filename(savefolder, name_parts, "." + FIGURE_FORMAT["format"])
+        f.savefig(Path(savefolder) / fn_out, dpi=FIGURE_FORMAT["dpi"])
     if show:
         plt.show()
     if close:
