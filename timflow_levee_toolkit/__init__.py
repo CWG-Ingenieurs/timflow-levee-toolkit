@@ -71,6 +71,8 @@ from .model import (
 )
 from .response import (
     calculate_flow_resistance,
+    response_profile_trwd,
+    fit_leakage_lengths,
     calculate_rf_steady,
     calculate_rf_peaks,
     summarize_rf_tidal,
@@ -159,6 +161,8 @@ __all__ = [
     "read_storm_event",
     "plot_storm_event",
     "calculate_flow_resistance",
+    "response_profile_trwd",
+    "fit_leakage_lengths",
     "calculate_rf_steady",
     "calculate_rf_peaks",
     "summarize_rf_tidal",

@@ -104,3 +104,15 @@ def test_rf_peaks_warns_for_low_river_peaks():
 def test_rf_peaks_no_warning_for_a_regular_tide(recwarn):
     tlt.calculate_rf_peaks(pd.DataFrame({"piezo": tidal_series(amplitude=0.4)}), tidal_series())
     assert not [w for w in recwarn if "river peaks" in str(w.message)]
+
+
+def test_fit_leakage_lengths_recovers_the_trwd_profile():
+    x = np.linspace(-100, 1000, 111)  # the foreland part (x < 0) is not used
+    r = tlt.response_profile_trwd(x, 150.0, 1800.0)
+    r[x < 0] = 2.0
+    fit = tlt.fit_leakage_lengths(pd.DataFrame({0: 0.5 * r, 1: r}, index=x))  # deepest layer
+    assert fit["leakage_length_riverside_m"] == pytest.approx(150.0, rel=1e-6)
+    assert fit["leakage_length_landside_m"] == pytest.approx(1800.0, rel=1e-6)
+    assert fit["r_squared"] == pytest.approx(1.0)
+    assert fit["n_points"] == (x >= 0).sum()
+    assert tlt.response_profile_trwd(0.0, 150.0, 1800.0) == pytest.approx(1 / (1 + 150 / 1800))

@@ -9,6 +9,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from ._units import _label
@@ -44,6 +45,75 @@ def calculate_flow_resistance(model_steady, inhom_name: str, layer: int = -1) ->
 
     leakagefactor = inhom.lab[0]
     return (leakagefactor / kD) * np.tanh(L / leakagefactor)
+
+
+def response_profile_trwd(x, leakage_length_riverside, leakage_length_landside):
+    """Response factor along x of the exponential model of the TRWD.
+
+    `r(x) = 1 / (1 + λ1 / λ3) · exp(-x / λ3)` in the hinterland (x >= 0 from the
+    inner toe), with λ1 the leakage length riverside and λ3 the leakage length
+    landside. Model 4A of the *Technisch Rapport Waterspanningen bij Dijken*
+    (TRWD, TAW 2004, appendix 4, p. b4-5 and b4-6) with W = λ/kD (long zones,
+    equal kD) and a levee without width (L2 = 0).
+
+    Parameters
+    ----------
+    x : array_like
+        Distance from the inner toe [m].
+    leakage_length_riverside, leakage_length_landside : float
+        λ1 and λ3 [m].
+
+    Returns
+    -------
+    numpy.ndarray
+        Response factor [-].
+    """
+    x = np.asarray(x, dtype=float)
+    return np.exp(-x / leakage_length_landside) / (1 + leakage_length_riverside / leakage_length_landside)
+
+
+def fit_leakage_lengths(rf_profile, layer=-1, p0=(300.0, 1000.0)):
+    """Fit the exponential model of the TRWD to a response factor profile in the hinterland.
+
+    Gives the leakage lengths of an equivalent single-aquifer model with the
+    same response in the hinterland, see `response_profile_trwd`. For a steady
+    profile the landside leakage length is close to the leakage factor of the
+    hinterland; for a transient profile (e.g. the design hydrograph, MHW) the
+    leakage lengths are *equivalent* ones that include the damping by storage.
+    The riverside leakage length only follows from the response at the inner
+    toe (`1 / (1 + λ1 / λ3)`): it also contains the effect of the river bed
+    and the foreland, so it is not the leakage factor of the river zone.
+
+    Parameters
+    ----------
+    rf_profile : pandas.DataFrame
+        Response factors along x, index x [m], one column per layer, e.g. from
+        `calculate_rf_steady_x` or `calculate_rf_mhw_x`. Only x >= 0 (the
+        hinterland) is used.
+    layer : int, optional
+        Position of the layer column to fit. Default is -1 (deepest layer, as
+        for the flow resistances W1 and W3).
+    p0 : tuple of float, optional
+        Initial guess (λ1, λ3) [m]. Both are bounded to positive values.
+
+    Returns
+    -------
+    pandas.Series
+        'leakage_length_riverside_m', 'leakage_length_landside_m', 'r_squared'
+        [-] and 'n_points'.
+    """
+    rf = rf_profile.iloc[:, layer]
+    rf = rf[rf.index >= 0].dropna()
+    x, r = rf.index.to_numpy(dtype=float), rf.to_numpy(dtype=float)
+    (lab1, lab3), _ = curve_fit(response_profile_trwd, x, r, p0=p0, bounds=(0, np.inf))
+    residual = r - response_profile_trwd(x, lab1, lab3)
+    r_squared = 1 - np.sum(residual**2) / np.sum((r - r.mean()) ** 2)
+    return pd.Series({
+        "leakage_length_riverside_m": lab1,
+        "leakage_length_landside_m": lab3,
+        "r_squared": r_squared,
+        "n_points": len(x),
+    })
 
 
 # -----------------------------------------------------------------------------
