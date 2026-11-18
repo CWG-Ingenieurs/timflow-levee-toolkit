@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -33,25 +35,30 @@ def test_validate_model_params_finds_problems(example_dir):
 def test_write_and_read_model_params_round_trip(example_copy, transient_model):
     path = parameter_file(example_copy)
     written = tlt.write_model_params(transient_model, path, tab_name="calibrated")
-    assert written.attrs["tab_name"] == "calibrated"
+    tab = written.attrs["tab_name"]
+    assert re.fullmatch(r"calibrated_\d{8}_\d{6}", tab)  # always a timestamp
     original, naq = tlt.read_model_params(path, "initial")
-    again, _ = tlt.read_model_params(path, "calibrated")
+    again, _ = tlt.read_model_params(path, tab)
     for zone in original:
         for key in ("z", "kaq", "c", "Saq", "Sll"):
             np.testing.assert_allclose(again[zone][key], original[zone][key], err_msg=f"{zone} {key}")
 
-    # A second write never overwrites: the tab name gets a timestamp
+    # A second write within the same second never overwrites: a sequence number is added
     second = tlt.write_model_params(transient_model, path, tab_name="calibrated")
-    assert second.attrs["tab_name"].startswith("calibrated_")
-    assert {"initial", "calibrated", second.attrs["tab_name"]} <= set(load_workbook(path).sheetnames)
+    assert second.attrs["tab_name"].startswith("calibrated_") and second.attrs["tab_name"] != tab
+
+    # Without timestamp: the name as it is, the first time
+    plain = tlt.write_model_params(transient_model, path, tab_name="final", timestamp=False)
+    assert plain.attrs["tab_name"] == "final"
+    assert {"initial", tab, second.attrs["tab_name"], "final"} <= set(load_workbook(path).sheetnames)
 
 
 def test_unique_tab_name():
-    assert _unique_tab_name("calibrated", ["initial"]) == "calibrated"
-    name = _unique_tab_name("Calibrated", ["calibrated"])
+    assert re.fullmatch(r"calibrated_\d{8}_\d{6}", _unique_tab_name("calibrated", ["initial"]))
+    assert _unique_tab_name("calibrated", ["initial"], timestamp=False) == "calibrated"
+    name = _unique_tab_name("Calibrated", ["calibrated"], timestamp=False)
     assert name.startswith("Calibrated_") and len(name) <= 31
-    long_name = _unique_tab_name("x" * 31, ["x" * 31])
-    assert len(long_name) <= 31
+    assert len(_unique_tab_name("x" * 31, [])) <= 31
 
 
 def test_create_parameter_template(tmp_path):
