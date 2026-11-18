@@ -10,7 +10,10 @@ PDOK, REGIS and GeoTOP). To keep the load on these services low, they run only f
 of releases (Read the Docs version 'stable' and release tags), or with `--downloads`; otherwise (e.g.
 'latest', which follows `dev`) they appear without outputs. They run after the minimal path and do not
 replace series in the pastastore, so they do not change the model results. An error in one of them
-(e.g. a service that is down) is shown in the notebook and does not stop the build.
+(e.g. a service that is down) is shown in the notebook and does not stop the build. To stay within the
+15 minutes of Read the Docs, the download notebooks must be done 11 minutes after the start of this
+script: a cell that takes too long (a service that does not respond) leaves that notebook without outputs,
+and a download notebook is not started after 9 minutes.
 
 Progress output is useful when running a notebook, but not in the documentation: the dots of the
 calibration (one per model run) and the progress bars of the downloads (tqdm) are removed from the
@@ -96,27 +99,66 @@ def strip_progress(nb):
         cell.outputs = [o for o in cell.get("outputs", []) if o.get("output_type") != "stream" or o["text"].strip()]
 
 
-def run(name, transect, save, allow_errors=False):
+# The download notebooks depend on external services that are sometimes very slow (a cell of notebook 21
+# once hung for more than 15 minutes). Read the Docs stops a build after 15 minutes (about 1 minute of it
+# for the installation and 1-2 minutes for Sphinx), so the download notebooks must be done DOWNLOAD_DEADLINE
+# seconds after the start of this script: a notebook is not started after DOWNLOAD_LAST_START, a cell may
+# take at most DOWNLOAD_CELL_TIMEOUT (and not beyond the deadline), and no cell starts after the deadline.
+DOWNLOAD_CELL_TIMEOUT = 300  # [s]
+DOWNLOAD_LAST_START = 540  # [s] since the start of this script
+DOWNLOAD_DEADLINE = 660  # [s] since the start of this script
+
+
+class DeadlineExceeded(RuntimeError):
+    """The download notebooks ran past DOWNLOAD_DEADLINE."""
+
+
+def run(name, transect, save, allow_errors=False, timeout=900, deadline=None):
+    """Execute a notebook; with `deadline` (a `time.perf_counter()` value) no cell starts after it."""
     path = NOTEBOOKS / f"{name}.ipynb"
     nb = nbformat.read(path, as_version=4)
     if transect is not None:
         cells = [c for c in nb.cells if "parameters" in c.metadata.get("tags", [])]
         assert len(cells) == 1, f"{name}: no parameters cell"
         cells[0].source = f'transect_name = "{transect}"'
+
+    def check_deadline(**kwargs):
+        if deadline is not None and time.perf_counter() > deadline:
+            raise DeadlineExceeded(f"{name}: past the deadline of the download notebooks")
+
     start = time.perf_counter()
-    NotebookClient(nb, timeout=900, kernel_name="python3", allow_errors=allow_errors,
-                   resources={"metadata": {"path": str(NOTEBOOKS)}}).execute()
+    NotebookClient(nb, timeout=timeout, kernel_name="python3", allow_errors=allow_errors,
+                   on_cell_start=check_deadline, resources={"metadata": {"path": str(NOTEBOOKS)}}).execute()
     print(f"{name} ({transect or 'project'}): {time.perf_counter() - start:.0f} s", flush=True)
     if save:
         strip_progress(nb)
         nbformat.write(nb, path)
 
 
+def run_download(name, transect, save, started):
+    """Run a download notebook; a time-out or other failure is reported and does not stop the build.
+
+    Errors in a cell are shown in the notebook (`allow_errors`). A cell that does not finish in time, or
+    the deadline of the download notebooks, stops the notebook: it then appears without outputs.
+    """
+    elapsed = time.perf_counter() - started
+    if elapsed > DOWNLOAD_LAST_START:
+        print(f"{name}: skipped, the build has already run for {elapsed:.0f} s", flush=True)
+        return
+    deadline = started + DOWNLOAD_DEADLINE
+    timeout = int(max(30, min(DOWNLOAD_CELL_TIMEOUT, deadline - time.perf_counter())))
+    try:
+        run(name, transect, save, allow_errors=True, timeout=timeout, deadline=deadline)
+    except Exception as e:  # e.g. CellTimeoutError of a service that does not respond, or DeadlineExceeded
+        print(f"{name}: not executed ({type(e).__name__}), it appears without outputs", flush=True)
+
+
 if __name__ == "__main__":
+    started = time.perf_counter()
     for args in MINIMAL_PATH:
         run(*args)
     if run_downloads():
         for args in DOWNLOADS:
-            run(*args, allow_errors=True)
+            run_download(*args, started=started)
     else:
         print("Download notebooks not executed (only for releases, or with --downloads)")
