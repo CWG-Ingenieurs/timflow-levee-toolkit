@@ -20,8 +20,8 @@ one transect: set `transect_name` to `Papendrecht West` or `Papendrecht East`, a
 | Step | Notebook | What it does |
 |---|---|---|
 | 0 | `00 Set up project` | checks the transects metadata and creates the folders |
-| 1 | `01 Piezometer locations` | reads the piezometers and writes the geopackage |
-| 2 | `10 Import time series from Excel` | imports the time series into the pastastore of each transect |
+| 1 | `10 Import time series from Excel` | imports the time series into the pastastore of each transect |
+| 2 | `13 Piezometer locations` | reads the piezometers and writes the geopackage |
 | 3 | `20 Geohydrological scheme` | checks the geohydrological scheme (model parameters) |
 | 4 | `51 Prepare model inputs` | selects the model period and prepares the observations |
 | 5 | `52 Timflow model` | builds and calibrates the Timflow model, response factors, storm event |

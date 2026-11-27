@@ -47,7 +47,7 @@ these packages, its docstring names the call it uses.
 | [hydropandas](https://github.com/ArtesiaWater/hydropandas) ([docs](https://hydropandas.readthedocs.io)) | download of BRO groundwater levels and Rijkswaterstaat river levels | 11, 12 |
 | [brodata](https://github.com/ArtesiaWater/brodata) | BRO CPTs, boreholes and monitoring wells, DINO borehole samples | 21 |
 | [nlmod](https://github.com/gwmod/nlmod) ([docs](https://nlmod.readthedocs.io)) | REGIS and GeoTOP layer models (TNO) | 21 |
-| [geopandas](https://geopandas.org) and [contextily](https://contextily.readthedocs.io) | maps with a background | 01, 15, 21 |
+| [geopandas](https://geopandas.org) and [contextily](https://contextily.readthedocs.io) | maps with a background | 13, 15, 21 |
 
 ## Getting started
 
@@ -73,8 +73,8 @@ The minimal path runs offline.
 | Step | Notebook | Required |
 |---|---|---|
 | 0 | `00 Set up project` | yes |
-| 1 | `01 Piezometer locations` | yes |
-| 2 | `10 Import time series from Excel`, or `11 Download BRO groundwater levels` and `12 Download river levels (Rijkswaterstaat)` | yes (Example uses Excel) |
+| 1 | `10 Import time series from Excel`, or `11 Download BRO groundwater levels` and `12 Download river levels (Rijkswaterstaat)` | yes (Example uses Excel) |
+| 2 | `13 Piezometer locations` | yes |
 | | `15 Overview of measurements` | optional |
 | 3 | `20 Geohydrological scheme` | yes |
 | | `21 Subsurface data` | optional |

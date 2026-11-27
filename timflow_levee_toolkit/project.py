@@ -165,8 +165,25 @@ class Project:
         x1, y1, x2, y2 = (float(row[c]) for c in columns)
         return [(x1, y1), (x2, y2)]
 
+    def piezometer_table(self, transect=None):
+        """Piezometers from the piezometer table (`piezometers.xlsx`), checked with `read_piezometer_table`.
+
+        Parameters
+        ----------
+        transect : str, optional
+            Only the piezometers of this transect. Default: all piezometers.
+
+        Returns
+        -------
+        pandas.DataFrame
+        """
+        table = read_piezometer_table(self.general_file("piezometers"))
+        if transect is not None:
+            table = table[table["transect"] == transect].copy()
+        return table
+
     def piezometers(self, transect):
-        """Piezometers of one transect from the project geopackage."""
+        """Piezometers of one transect from the project geopackage (written by notebook 13)."""
         return read_piezometers(
             self.general_file("project_data"), transect, layer=self.settings["paths"]["piezometer_layer"]
         )
@@ -404,6 +421,129 @@ def read_piezometer_table(path, sheet_name="piezometers"):
         df["use_calibration"] = 1
     df["use_calibration"] = df["use_calibration"].fillna(1).astype(int)
     return df
+
+
+def check_piezometer_table(piezometers):
+    """Piezometers whose columns for the model are not (correctly) filled in.
+
+    Checks per filter:
+
+    - `x_crosssection`: filled in (a number);
+    - `modellayer`: filled in, a whole number of 0 or more;
+    - `use_calibration`: 0 or 1 (an empty cell counts as 1).
+
+    A filter without `x_crosssection` or `modellayer` can't be used in the
+    model (notebooks 51 and 52). Filters with `use_calibration` = 0 still need
+    both, because they are shown in the figures.
+
+    Parameters
+    ----------
+    piezometers : pandas.DataFrame
+        Piezometer table, e.g. from `read_piezometer_table`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per filter with a problem: name, transect, filter screen and
+        a description of the problem in the column 'problem'. Empty if all
+        filters are complete.
+    """
+    rows = []
+    for _, row in piezometers.iterrows():
+        problems = []
+        if pd.isna(row.get("x_crosssection")):
+            problems.append("x_crosssection is empty")
+        layer = row.get("modellayer")
+        if pd.isna(layer):
+            problems.append("modellayer is empty")
+        elif not (float(layer).is_integer() and float(layer) >= 0):
+            problems.append(f"modellayer {layer} is not a whole number of 0 or more")
+        use = row.get("use_calibration", 1)
+        if pd.notna(use) and use not in (0, 1):
+            problems.append(f"use_calibration {use} is not 0 or 1")
+        if problems:
+            rows.append({
+                "name": row["name"],
+                "transect": row["transect"],
+                "screen_top": row.get("screen_top"),
+                "screen_bottom": row.get("screen_bottom"),
+                "problem": "; ".join(problems),
+            })
+    columns = ["name", "transect", "screen_top", "screen_bottom", "problem"]
+    return pd.DataFrame(rows, columns=columns)
+
+
+PIEZOMETERS_COLUMNS = [
+    "name", "transect", "x", "y", "ground_level", "screen_top", "screen_bottom",
+    "modellayer", "x_crosssection", "use_calibration", "source", "remark",
+]
+
+
+def add_piezometers(path, piezometers, sheet_name="piezometers"):
+    """Add new piezometers to the piezometer table, without changing the rows that are there.
+
+    Only piezometers whose `name` is not yet in the table are added, at the
+    end of the sheet. Rows that are already there, with the values filled in
+    by hand (`modellayer`, `x_crosssection`, `use_calibration`, `remark`),
+    stay as they are, and so do the other sheets (e.g. 'explanation') and the
+    layout. Columns of `piezometers` that the table doesn't have (e.g.
+    `tube_nr`) are left out. If the file doesn't exist, it is created with the
+    columns of the template (without the sheet 'explanation'). The file is
+    only written if there are piezometers to add.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Excel file with the piezometer table (`piezometers.xlsx`).
+    piezometers : pandas.DataFrame
+        Piezometers to add, with at least the column 'name', e.g. from
+        `piezometer_table_from_obs`.
+    sheet_name : str, optional
+        Sheet with the piezometer table. Default is 'piezometers'.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The rows that were added, with the columns of the table.
+    """
+    from openpyxl import Workbook, load_workbook
+
+    path = Path(path)
+    if path.exists():
+        wb = load_workbook(path)
+        ws = wb[sheet_name]
+        header = [c.value for c in ws[1]]
+        if "name" not in header:
+            raise ValueError(f"No column 'name' in sheet '{sheet_name}' of '{path}'")
+        i_name = header.index("name")
+        existing = {
+            str(row[i_name]) for row in ws.iter_rows(min_row=2, values_only=True) if row[i_name] is not None
+        }
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = sheet_name
+        header = list(PIEZOMETERS_COLUMNS)
+        ws.append(header)
+        existing = set()
+
+    new = piezometers.copy()
+    new["name"] = new["name"].astype(str)
+    new = new[~new["name"].isin(existing)].drop_duplicates("name")
+    new = new.reindex(columns=[c for c in header if c is not None])
+    if new.empty:
+        return new
+
+    def value(v):
+        if v is None or (not isinstance(v, str) and pd.isna(v)):
+            return None
+        return v.item() if isinstance(v, np.generic) else v
+
+    for _, row in new.iterrows():
+        ws.append([value(row[c]) if c is not None else None for c in header])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(path)
+    return new.reset_index(drop=True)
 
 
 def write_piezometers(piezometers, gpkg_file, layer="piezometers", crs="EPSG:28992"):

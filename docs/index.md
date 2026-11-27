@@ -23,10 +23,10 @@ branch) they are shown without outputs.
 :maxdepth: 1
 
 /notebooks/00 Set up project
-/notebooks/01 Piezometer locations
 /notebooks/10 Import time series from Excel
 /notebooks/11 Download BRO groundwater levels
 /notebooks/12 Download river levels (Rijkswaterstaat)
+/notebooks/13 Piezometer locations
 /notebooks/15 Overview of measurements
 /notebooks/20 Geohydrological scheme
 /notebooks/21 Subsurface data
