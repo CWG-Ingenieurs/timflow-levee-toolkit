@@ -38,8 +38,8 @@ NOTEBOOKS = Path(__file__).resolve().parents[1] / "notebooks"
 # (notebook, transect or None, save outputs)
 MINIMAL_PATH = [
     ("00 Set up project", None, True),
-    ("01 Piezometer locations", None, True),
     ("10 Import time series from Excel", None, True),
+    ("13 Piezometer locations", None, True),
     ("20 Geohydrological scheme", None, True),
     ("51 Prepare model inputs", "Papendrecht East", False),
     ("52 Timflow model", "Papendrecht East", False),

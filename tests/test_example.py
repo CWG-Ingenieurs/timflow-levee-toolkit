@@ -8,8 +8,8 @@ from conftest import REPO, TRANSECT
 
 NOTEBOOKS = [
     "00 Set up project",
-    "01 Piezometer locations",
     "10 Import time series from Excel",
+    "13 Piezometer locations",
     "20 Geohydrological scheme",
     "51 Prepare model inputs",
     "52 Timflow model",

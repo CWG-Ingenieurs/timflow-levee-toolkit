@@ -36,10 +36,10 @@ the modules:
 | Step | Notebook | Path | Input | Output |
 |---|---|---|---|---|
 | 0 | [`00 Set up project`](00%20Set%20up%20project.ipynb) | minimal | `transects_metadata.xlsx` | folders per transect |
-| 1 | [`01 Piezometer locations`](01%20Piezometer%20locations.ipynb) | minimal | `piezometers.xlsx` | `project_data.gpkg` |
-| 2 | [`10 Import time series from Excel`](10%20Import%20time%20series%20from%20Excel.ipynb) | minimal | `timeseries.xlsx` | pastastore per transect |
-| 2 | [`11 Download BRO groundwater levels`](11%20Download%20BRO%20groundwater%20levels.ipynb) | optional | rectangle per transect | pastastore per transect, `piezometers_from_bro.xlsx` |
-| 2 | [`12 Download river levels (Rijkswaterstaat)`](12%20Download%20river%20levels%20%28Rijkswaterstaat%29.ipynb) | optional | `loc_river` per transect | pastastore per transect |
+| 1 | [`10 Import time series from Excel`](10%20Import%20time%20series%20from%20Excel.ipynb) | minimal | `timeseries.xlsx`, `piezometers.xlsx` | pastastore per transect |
+| 1 | [`11 Download BRO groundwater levels`](11%20Download%20BRO%20groundwater%20levels.ipynb) | optional | rectangle per transect | pastastore per transect, new filters in `piezometers.xlsx` |
+| 1 | [`12 Download river levels (Rijkswaterstaat)`](12%20Download%20river%20levels%20%28Rijkswaterstaat%29.ipynb) | optional | `loc_river` per transect | pastastore per transect |
+| 2 | [`13 Piezometer locations`](13%20Piezometer%20locations.ipynb) | minimal | `piezometers.xlsx` | `project_data.gpkg` |
 | 2 | [`15 Overview of measurements`](15%20Overview%20of%20measurements.ipynb) | optional | pastastore | overview table and figures |
 | 3 | [`20 Geohydrological scheme`](20%20Geohydrological%20scheme.ipynb) | minimal | `model_parameters_<transect>.xlsx` | checked scheme |
 | 3 | [`21 Subsurface data`](21%20Subsurface%20data.ipynb) | optional | rectangle and cross-section line | BRO CPTs and boreholes, REGIS and GeoTOP |
@@ -47,9 +47,12 @@ the modules:
 | 5 | [`52 Timflow model`](52%20Timflow%20model.ipynb) | minimal (storm event optional) | all of the above | calibrated parameters, figures, response factors, `model_summary.xlsx` |
 | 6 | [`60 Summary over transects`](60%20Summary%20over%20transects.ipynb) | optional | results of notebook 52 | tables and figures over all transects |
 
-Notebooks 11 and 12 are alternatives or additions to notebook 10. After notebook 11, copy the rows
-you need from `piezometers_from_bro.xlsx` to `piezometers.xlsx`, fill in `modellayer` and
-`x_crosssection` (by hand), and run notebook 01 again.
+Notebooks 11 and 12 are alternatives or additions to notebook 10. Notebook 11 adds the downloaded
+filters that are not yet in `piezometers.xlsx` at the end of the table; rows that are already there
+are not changed. Fill in `modellayer` and `x_crosssection` of the new filters (by hand), or set
+`use_calibration` to 0 for a filter you don't want to use, and run notebook 13. Notebook 13 comes
+after the time series for that reason: it writes the checked piezometer table to the geopackage that
+the later notebooks use.
 
 ## Project folder
 
@@ -64,10 +67,9 @@ default layout:
 └── data/
     ├── general/
     │   ├── transects_metadata.xlsx
-    │   ├── piezometers.xlsx
+    │   ├── piezometers.xlsx               (notebook 11 adds the BRO filters)
     │   ├── timeseries.xlsx
-    │   ├── project_data.gpkg              (created by notebook 01)
-    │   ├── piezometers_from_bro.xlsx      (created by notebook 11)
+    │   ├── project_data.gpkg              (created by notebook 13)
     │   └── storm_events/storm_event_<id>.xlsx
     └── transects/<transect>/
         ├── model_parameters_<transect>.xlsx
