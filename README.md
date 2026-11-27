@@ -1,6 +1,6 @@
 # timflow-levee-toolkit
 
-[![version](https://img.shields.io/badge/version-0.1.6-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
+[![version](https://img.shields.io/badge/version-0.1.7-blue)](https://github.com/CWG-Ingenieurs/timflow-levee-toolkit/releases)
 [![documentation](https://readthedocs.org/projects/timflow-levee-toolkit/badge/?version=stable)](https://timflow-levee-toolkit.readthedocs.io/en/stable/)
 
 Piezometer analysis of levees with Timflow.
@@ -47,7 +47,7 @@ these packages, its docstring names the call it uses.
 | [hydropandas](https://github.com/ArtesiaWater/hydropandas) ([docs](https://hydropandas.readthedocs.io)) | download of BRO groundwater levels and Rijkswaterstaat river levels | 11, 12 |
 | [brodata](https://github.com/ArtesiaWater/brodata) | BRO CPTs, boreholes and monitoring wells, DINO borehole samples | 21 |
 | [nlmod](https://github.com/gwmod/nlmod) ([docs](https://nlmod.readthedocs.io)) | REGIS and GeoTOP layer models (TNO) | 21 |
-| [geopandas](https://geopandas.org) and [contextily](https://contextily.readthedocs.io) | maps with a background | 01, 15, 21 |
+| [geopandas](https://geopandas.org) and [contextily](https://contextily.readthedocs.io) | maps with a background | 13, 15, 21 |
 
 ## Getting started
 
@@ -73,8 +73,8 @@ The minimal path runs offline.
 | Step | Notebook | Required |
 |---|---|---|
 | 0 | `00 Set up project` | yes |
-| 1 | `01 Piezometer locations` | yes |
-| 2 | `10 Import time series from Excel`, or `11 Download BRO groundwater levels` and `12 Download river levels (Rijkswaterstaat)` | yes (Example uses Excel) |
+| 1 | `10 Import time series from Excel`, or `11 Download BRO groundwater levels` and `12 Download river levels (Rijkswaterstaat)` | yes (Example uses Excel) |
+| 2 | `13 Piezometer locations` | yes |
 | | `15 Overview of measurements` | optional |
 | 3 | `20 Geohydrological scheme` | yes |
 | | `21 Subsurface data` | optional |
@@ -91,7 +91,7 @@ A project is a folder with a `project_settings.toml` (optional) and the input in
 
 - `transects_metadata.xlsx`: one row per transect, with the polder level, undisturbed head, river
   gauge, and widths of river, foreland and hinterland. The model period is not part of it: you choose
-  it in notebook 51, from the figures of the complete series.
+  it in notebook 51, from the figures of the complete series (notebook 15 ranks candidate periods).
 - `piezometers.xlsx`: one row per piezometer filter, with transect, coordinates, filter screen,
   model layer and x in the cross-section (given by hand).
 - `timeseries.xlsx`: heads and river levels, one column per series. Instead of this file, you can
@@ -99,9 +99,33 @@ A project is a folder with a `project_settings.toml` (optional) and the input in
 - `model_parameters_<transect>.xlsx`: the geohydrological scheme per transect.
 - Optional: `storm_event_<id>.xlsx`, a river level scenario per location.
 
-Copy the example project as a template: each Excel file has a sheet `explanation` describing its
-columns. Then set `project_dir` in the notebooks to your project folder. The project folder can be
-anywhere, e.g. in its own repository; it only holds data and results, the code stays here.
+Create an empty project with the input files of the example as templates (each Excel file has a sheet
+`explanation` describing its columns):
+
+```python
+import timflow_levee_toolkit as tlt
+tlt.create_project("path/to/my project", name="My project")
+```
+
+Then fill in the Excel files, and set `project_dir` in the notebooks to your project folder. The project
+folder can be anywhere, e.g. in its own repository; it only holds data, results and a short `run.py`
+with its settings; the code stays here.
+
+### Running all transects
+
+`create_project` also writes `run.py`: the settings of the project for running the notebooks without
+opening them, with `tlt.run_notebooks` and `tlt.run_transects`. The notebooks of the toolkit are not
+changed: a copy is filled in (project folder, transect, model period, calibration set) and executed,
+and the executed copy is saved in the project.
+
+```
+python run.py setup         # notebooks 00, 11, 12, 13 and 15
+python run.py               # notebooks 51 and 52 for each transect, then 60
+python run.py <transect>    # notebooks 51 and 52 for this transect, then 60
+```
+
+In `run.py` you set the download period, the model period (`PERIOD`), the transects and a
+calibration set per transect (`CALIBRATION`: the code of the calibration cell of notebook 52).
 
 ## Repository layout
 
@@ -111,8 +135,8 @@ anywhere, e.g. in its own repository; it only holds data and results, the code s
 └── examples/papendrecht/    example project with public data
 ```
 
-The package has the modules `project`, `timeseries`, `model`, `response`, `subsurface` and
-`output`. All public functions are also available at the top level, e.g. `tlt.load_project`.
+The package has the modules `project`, `timeseries`, `model`, `response`, `subsurface`, `maps`,
+`output` and `runner`. All public functions are also available at the top level, e.g. `tlt.load_project`.
 
 ## Development
 

@@ -155,6 +155,174 @@ def check_trend(obs, max_change=0.25, window=25 / 24):
     return table
 
 
+MODEL_PERIOD_MODES = ("tide", "wave")
+
+
+def candidate_model_periods(rivers, heads, length=7, mode="tide", min_completeness=0.95, max_river_high=0.5,
+                            n_best=10, window=25):
+    """Rank candidate model periods (e.g. weeks) by the data and the river level.
+
+    A candidate starts at 00:00 of every day and lasts `length` days. The tide is
+    filtered out with a centred moving average over `window` hours (25 hours:
+    about two tidal periods). Per candidate:
+
+    - `completeness`: the lowest fraction of hours with data over all series
+      (`least_complete`: that series);
+    - `river_change`: the largest range (max - min) of the filtered river level [m];
+    - `head_change`: the largest range of the filtered heads [m];
+    - `river_high`: the highest filtered river level above the median of that gauge
+      over the whole series [m];
+    - `tidal_range`: the largest range of the (unfiltered) river level [m].
+
+    Two kinds of model period, `mode`:
+
+    - 'tide' (a river with tide): the tidal response is calibrated, so the daily
+      mean should be fairly constant (see `check_trend`) and the river not high.
+      Candidates with complete data and `river_high` <= `max_river_high` are
+      ranked by `river_change + head_change`, smallest first.
+    - 'wave' (a river without tide, e.g. held by weirs): the response to a
+      high-water wave is calibrated, so the river should change. Candidates with
+      complete data are ranked by `river_change`, largest first.
+
+    Parameters
+    ----------
+    rivers, heads : pandas.DataFrame
+        Hourly river levels and heads on one time axis, e.g. from
+        `Project.model_period_series`.
+    length : float, optional
+        Length of a candidate period [days]. Default is 7.
+    mode : {'tide', 'wave'}, optional
+        Default is 'tide'.
+    min_completeness : float, optional
+        Smallest fraction of hours with data, for every series. Default is 0.95.
+    max_river_high : float, optional
+        Mode 'tide': highest filtered river level above its median [m]. Default is 0.5.
+    n_best : int, optional
+        Number of best candidates that are ranked (they don't overlap). Default is 10.
+    window : int, optional
+        Width of the moving average [hours]. Default is 25.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per candidate (index: start), with the columns above, 'end',
+        'score', 'candidate' (complete, and in mode 'tide' no high water) and
+        'rank' (1 = best; NaN if not among the `n_best`).
+    """
+    if mode not in MODEL_PERIOD_MODES:
+        raise ValueError(f"mode must be one of {MODEL_PERIOD_MODES}, not {mode!r}")
+    duration = pd.Timedelta(days=length)
+    min_periods = int(round(0.8 * window))
+    river_f = rivers.rolling(window, center=True, min_periods=min_periods).mean()
+    head_f = heads.rolling(window, center=True, min_periods=min_periods).mean()
+    river_median = rivers.median()
+    index = rivers.index.union(heads.index)
+
+    rows = []
+    for start in pd.date_range(index[0].ceil("D"), index[-1] - duration, freq="D"):
+        sl = slice(start, start + duration - pd.Timedelta(hours=1))
+        completeness = pd.concat([rivers.loc[sl], heads.loc[sl]], axis=1).notna().mean()
+        rf, hf = river_f.loc[sl], head_f.loc[sl]
+        rows.append({
+            "start": start,
+            "end": start + duration,
+            "completeness": completeness.min(),
+            "least_complete": completeness.idxmin() if len(completeness) else None,
+            "river_change": (rf.max() - rf.min()).max(),
+            "head_change": (hf.max() - hf.min()).max() if heads.shape[1] else 0.0,
+            "river_high": (rf.max() - river_median).max(),
+            "tidal_range": (rivers.loc[sl].max() - rivers.loc[sl].min()).max(),
+        })
+    periods = pd.DataFrame(rows).set_index("start")
+    if periods.empty:
+        raise ValueError(f"The series are shorter than one period of {length} days")
+    complete = periods["completeness"] >= min_completeness
+    if mode == "tide":
+        periods["score"] = periods["river_change"] + periods["head_change"]
+        periods["candidate"] = complete & (periods["river_high"] <= max_river_high)
+        order = periods[periods["candidate"]].sort_values("score")
+    else:
+        periods["score"] = periods["river_change"]
+        periods["candidate"] = complete
+        order = periods[periods["candidate"]].sort_values("score", ascending=False)
+    best = []
+    for start in order.index:
+        if all(abs(start - b) >= duration for b in best):
+            best.append(start)
+        if len(best) == n_best:
+            break
+    periods["rank"] = pd.Series(range(1, len(best) + 1), index=best, dtype=float)
+    return periods
+
+
+def plot_candidate_model_periods(rivers, heads, periods, current=None, min_completeness=0.95, units=None):
+    """Figure of the candidate model periods of `candidate_model_periods`.
+
+    Four panels: the river levels (and their filtered daily mean), the filtered
+    heads relative to their median, the completeness and the score. The ranked
+    candidates are shaded green with their rank; the `current` model period red.
+
+    Parameters
+    ----------
+    rivers, heads : pandas.DataFrame
+        Hourly river levels and heads, as passed to `candidate_model_periods`.
+    periods : pandas.DataFrame
+        Result of `candidate_model_periods`.
+    current : tuple of datetime, optional
+        (start, end) of the current model period.
+    min_completeness : float, optional
+        Shown as a line in the completeness panel. Default is 0.95.
+    units : dict, optional
+        Units for the axis labels (`project.units`).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    import matplotlib.dates as mdates
+
+    head_unit = (units or {}).get("head", "m NAP")
+    rel_unit = (units or {}).get("head_rel", "m")
+    river_f = rivers.rolling(25, center=True, min_periods=20).mean()
+    head_f = heads.rolling(25, center=True, min_periods=20).mean()
+    best = periods["rank"].dropna().sort_values()
+    duration = (periods["end"] - periods.index).iloc[0]
+    fig, axes = plt.subplots(4, 1, figsize=(14, 11), sharex=True, layout="constrained",
+                             gridspec_kw={"height_ratios": [3, 3, 1, 2]})
+    for name in rivers.columns:
+        axes[0].plot(rivers.index, rivers[name], lw=0.2, alpha=0.4)
+        axes[0].plot(river_f.index, river_f[name], lw=1.2, label=f"{name} (25 h mean)")
+    axes[0].set_ylabel(f"river level [{head_unit}]")
+    axes[0].legend(loc="upper left", fontsize="small", ncol=3)
+    for name in heads.columns:
+        axes[1].plot(head_f.index, head_f[name] - heads[name].median(), lw=0.7)
+    axes[1].set_ylabel(f"head - median\n(25 h mean) [{rel_unit}]")
+    axes[2].plot(periods.index, periods["completeness"], color="k", lw=0.8)
+    axes[2].axhline(min_completeness, color="tab:red", ls="--", lw=0.8)
+    axes[2].set_ylabel("completeness\n(period from date)")
+    axes[2].set_ylim(0, 1.05)
+    ok = periods["candidate"]
+    axes[3].plot(periods.index, periods["score"].where(ok), color="k", lw=0.8, label="score (candidates)")
+    axes[3].plot(periods.index, periods["score"].where(~ok), color="0.7", lw=0.8, label="score (other periods)")
+    axes[3].set_ylabel(f"score [{rel_unit}]\n(period from date)")
+    axes[3].legend(loc="upper left", fontsize="small")
+    for ax in axes:
+        for start, rank in best.items():
+            ax.axvspan(start, start + duration, color="tab:green", alpha=0.25, lw=0)
+            if ax is axes[0]:
+                ax.text(start + duration / 2, 1.0, str(int(rank)), transform=ax.get_xaxis_transform(),
+                        ha="center", va="bottom", fontsize="small", color="tab:green")
+        if current is not None:
+            ax.axvspan(pd.Timestamp(current[0]), pd.Timestamp(current[1]), color="tab:red", alpha=0.25, lw=0)
+        ax.grid(alpha=0.3)
+    axes[0].set_title("Candidate model periods (green, ranked)"
+                      + (" and the current model period (red)" if current is not None else ""), loc="left")
+    locator = mdates.AutoDateLocator(minticks=3, maxticks=12)
+    axes[-1].xaxis.set_major_locator(locator)
+    axes[-1].xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+    return fig
+
+
 OBSERVATIONS_EXPLANATION = [
     ("observations", "time", "Date and time of the measurement, without time zone (Dutch winter time, UTC+1)"),
     ("observations", "days since start", "Model time: days since the start of the model period (sheet 'info'); "

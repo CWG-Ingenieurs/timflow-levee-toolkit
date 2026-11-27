@@ -33,13 +33,15 @@ from pathlib import Path
 import nbformat
 from nbclient import NotebookClient
 
+from timflow_levee_toolkit.runner import prepare_notebook
+
 NOTEBOOKS = Path(__file__).resolve().parents[1] / "notebooks"
 
 # (notebook, transect or None, save outputs)
 MINIMAL_PATH = [
     ("00 Set up project", None, True),
-    ("01 Piezometer locations", None, True),
     ("10 Import time series from Excel", None, True),
+    ("13 Piezometer locations", None, True),
     ("20 Geohydrological scheme", None, True),
     ("51 Prepare model inputs", "Papendrecht East", False),
     ("52 Timflow model", "Papendrecht East", False),
@@ -116,11 +118,8 @@ class DeadlineExceeded(RuntimeError):
 def run(name, transect, save, allow_errors=False, timeout=900, deadline=None):
     """Execute a notebook; with `deadline` (a `time.perf_counter()` value) no cell starts after it."""
     path = NOTEBOOKS / f"{name}.ipynb"
-    nb = nbformat.read(path, as_version=4)
-    if transect is not None:
-        cells = [c for c in nb.cells if "parameters" in c.metadata.get("tags", [])]
-        assert len(cells) == 1, f"{name}: no parameters cell"
-        cells[0].source = f'transect_name = "{transect}"'
+    # The notebooks run in place on the example (project_dir not changed); only the transect is filled in
+    nb = prepare_notebook(name, None, transect, notebooks_dir=NOTEBOOKS)
 
     def check_deadline(**kwargs):
         if deadline is not None and time.perf_counter() > deadline:

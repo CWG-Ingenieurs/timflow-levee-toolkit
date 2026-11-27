@@ -3,10 +3,10 @@
 All public functions are available at the top level, e.g. `tlt.load_project`
 or `tlt.plot_xsection` after `import timflow_levee_toolkit as tlt`; they are
 organised in the modules `project`, `timeseries`, `model`, `response`,
-`subsurface`, `maps` and `output`.
+`subsurface`, `maps`, `output` and `runner`.
 """
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 from ._units import DEFAULT_UNITS
 from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
@@ -22,22 +22,40 @@ from .project import (
     METADATA_OPTIONAL,
     FARFIELD_OPTIONS,
     Project,
+    EXAMPLE_DIR,
+    create_project,
     load_project,
     read_transects_table,
     validate_transects_metadata,
     read_transect_metadata,
     PIEZOMETERS_REQUIRED,
     PIEZOMETERS_OPTIONAL,
+    PIEZOMETERS_COLUMNS,
     read_piezometer_table,
+    check_piezometer_table,
+    add_piezometers,
     write_piezometers,
     read_piezometers,
     piezometer_table_from_obs,
+    write_river_gauges,
+    point_style_qml,
+    set_layer_style,
+)
+from .runner import (
+    NOTEBOOKS_DIR,
+    prepare_notebook,
+    execute_notebook,
+    run_notebooks,
+    run_transects,
 )
 from .timeseries import (
     plot_select,
     clip_data,
     to_days,
     check_trend,
+    MODEL_PERIOD_MODES,
+    candidate_model_periods,
+    plot_candidate_model_periods,
     write_observations,
     read_observations,
     plot_daily_situation,
@@ -120,20 +138,36 @@ __all__ = [
     "METADATA_OPTIONAL",
     "FARFIELD_OPTIONS",
     "Project",
+    "EXAMPLE_DIR",
+    "create_project",
     "load_project",
     "read_transects_table",
     "validate_transects_metadata",
     "read_transect_metadata",
     "PIEZOMETERS_REQUIRED",
     "PIEZOMETERS_OPTIONAL",
+    "PIEZOMETERS_COLUMNS",
     "read_piezometer_table",
+    "check_piezometer_table",
+    "add_piezometers",
     "write_piezometers",
     "read_piezometers",
     "piezometer_table_from_obs",
+    "write_river_gauges",
+    "point_style_qml",
+    "set_layer_style",
+    "NOTEBOOKS_DIR",
+    "prepare_notebook",
+    "execute_notebook",
+    "run_notebooks",
+    "run_transects",
     "plot_select",
     "clip_data",
     "to_days",
     "check_trend",
+    "MODEL_PERIOD_MODES",
+    "candidate_model_periods",
+    "plot_candidate_model_periods",
     "write_observations",
     "read_observations",
     "plot_daily_situation",

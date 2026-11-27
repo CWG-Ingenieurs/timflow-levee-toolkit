@@ -35,6 +35,7 @@ DEFAULT_SETTINGS = {
         "timeseries": "timeseries.xlsx",  # in `general`
         "project_data": "project_data.gpkg",  # in `general`
         "piezometer_layer": "piezometers",  # layer in `project_data`
+        "river_gauge_layer": "river_gauges",  # layer in `project_data` (written by notebook 12)
         "parameters": "model_parameters_{transect}.xlsx",  # in the transect folder
         "storm_event": "storm_events/storm_event_{loc_storm_event}.xlsx",  # in `general`
         "results": "results",  # project-wide results (summary over transects)
@@ -165,8 +166,25 @@ class Project:
         x1, y1, x2, y2 = (float(row[c]) for c in columns)
         return [(x1, y1), (x2, y2)]
 
+    def piezometer_table(self, transect=None):
+        """Piezometers from the piezometer table (`piezometers.xlsx`), checked with `read_piezometer_table`.
+
+        Parameters
+        ----------
+        transect : str, optional
+            Only the piezometers of this transect. Default: all piezometers.
+
+        Returns
+        -------
+        pandas.DataFrame
+        """
+        table = read_piezometer_table(self.general_file("piezometers"))
+        if transect is not None:
+            table = table[table["transect"] == transect].copy()
+        return table
+
     def piezometers(self, transect):
-        """Piezometers of one transect from the project geopackage."""
+        """Piezometers of one transect from the project geopackage (written by notebook 13)."""
         return read_piezometers(
             self.general_file("project_data"), transect, layer=self.settings["paths"]["piezometer_layer"]
         )
@@ -187,6 +205,49 @@ class Project:
             self.settings["transect_folders"]["pastastore"], self.transect_dir(transect), verbose=False
         )
         return pst.PastaStore(conn)
+
+    def model_period_series(self, transects=None):
+        """Hourly river levels and heads of the transects, to choose a model period.
+
+        Only the piezometers that are used in the calibration (with
+        `modellayer` and `x_crosssection`, and `use_calibration` not 0, from the
+        project geopackage) and the river gauge of each transect.
+
+        Parameters
+        ----------
+        transects : list of str, optional
+            Default: all transects.
+
+        Returns
+        -------
+        rivers, heads : pandas.DataFrame
+            Hourly means on one time axis (NaN for hours without data); the
+            columns of `heads` are named '<transect>: <piezometer>'.
+        """
+        rivers, heads = {}, {}
+        for transect in transects or self.transects():
+            loc_river = self.transect_metadata(transect)["loc_river"]
+            piezometers = self.piezometers(transect)
+            use = piezometers["modellayer"].notna() & piezometers["x_crosssection"].notna()
+            if "use_calibration" in piezometers.columns:
+                use &= piezometers["use_calibration"] != 0
+            names = set(piezometers.loc[use, "name"])
+            pstore = self.open_pastastore(transect)
+            for name in pstore.oseries_names:
+                if name != loc_river and name not in names:
+                    continue
+                s = pstore.get_oseries(name)
+                s = (s.iloc[:, 0] if isinstance(s, pd.DataFrame) else s).dropna().resample("1h").mean()
+                if name == loc_river:
+                    rivers[name] = s
+                else:
+                    heads[f"{transect}: {name}"] = s
+        series = {**rivers, **heads}
+        if not series:
+            raise ValueError("No river levels or piezometers used in the calibration found")
+        hours = pd.date_range(min(s.index.min() for s in series.values()).ceil("D"),
+                              max(s.index.max() for s in series.values()).floor("D"), freq="1h")
+        return pd.DataFrame(rivers).reindex(hours), pd.DataFrame(heads).reindex(hours)
 
     # --- set up and overview
     def create_folders(self, transects=None):
@@ -231,6 +292,82 @@ class Project:
                 "storm_event_file": bool(pd.notna(loc_storm) and self.storm_event_file(loc_storm).exists()),
             })
         return pd.DataFrame(rows).set_index("transect")
+
+
+#: Example project of the repository: its input files are the templates for `create_project`
+EXAMPLE_DIR = Path(__file__).resolve().parents[1] / "examples" / "papendrecht"
+
+
+def create_project(project_dir, name=None):
+    """Create an empty project: the input files of the example project without their data.
+
+    Creates in `project_dir` (an empty or new folder):
+
+    - `project_settings.toml`: the settings of the example, with the project name;
+    - `data/general/transects_metadata.xlsx`, `piezometers.xlsx` and
+      `timeseries.xlsx`: only the column headers, with the sheet
+      'explanation' of each file;
+    - `data/general/model_parameters_TEMPLATE.xlsx`: template of the
+      geohydrological scheme (`create_parameter_template`), to copy to
+      `data/transects/<transect>/model_parameters_<transect>.xlsx`;
+    - the folders `data/general/storm_events` and `data/transects`;
+    - `run.py`: the settings to run notebooks 51, 52 and 60 for all
+      transects with `run_transects` (model period, transects, calibration).
+
+    Needs the repository of the toolkit (the example project), as with an
+    editable install.
+
+    Parameters
+    ----------
+    project_dir : str or pathlib.Path
+        Folder of the new project; it must be empty or not exist.
+    name : str, optional
+        Name of the project. Default: the name of the folder.
+
+    Returns
+    -------
+    Project
+    """
+    from openpyxl import load_workbook
+
+    from .model import create_parameter_template
+    from .runner import RUN_TEMPLATE
+
+    project_dir = Path(project_dir)
+    if project_dir.exists() and any(project_dir.iterdir()):
+        raise FileExistsError(f"'{project_dir}' is not empty")
+    if not EXAMPLE_DIR.exists():
+        raise FileNotFoundError(f"Example project not found ({EXAMPLE_DIR}): install the toolkit from its repository")
+    name = name or project_dir.resolve().name
+    general = project_dir / "data" / "general"
+    (general / "storm_events").mkdir(parents=True)
+    (project_dir / "data" / "transects").mkdir(parents=True)
+
+    def empty_copy(src, dst, sheets, keep_columns=None):
+        wb = load_workbook(src)
+        for sheet in sheets:
+            ws = wb[sheet]
+            if ws.max_row > 1:
+                ws.delete_rows(2, ws.max_row - 1)
+            if keep_columns and ws.max_column > keep_columns:
+                ws.delete_cols(keep_columns + 1, ws.max_column - keep_columns)
+        wb.save(dst)
+
+    example_general = EXAMPLE_DIR / "data" / "general"
+    empty_copy(example_general / "transects_metadata.xlsx", general / "transects_metadata.xlsx", ["transects"])
+    empty_copy(example_general / "piezometers.xlsx", general / "piezometers.xlsx", ["piezometers"])
+    # timeseries: only the column 'datetime' (the other columns are the series of the example)
+    empty_copy(example_general / "timeseries.xlsx", general / "timeseries.xlsx", ["timeseries"], keep_columns=1)
+    empty_copy(general / "timeseries.xlsx", general / "timeseries.xlsx", ["series_info"])
+    create_parameter_template(general / "model_parameters_TEMPLATE.xlsx")
+
+    settings = (EXAMPLE_DIR / "project_settings.toml").read_text(encoding="utf-8")
+    example_name = load_project(EXAMPLE_DIR).name
+    settings = settings.replace("the example project 'Papendrecht'", f"the project '{name}'")
+    settings = settings.replace(f'name = "{example_name}"', f'name = "{name}"')
+    (project_dir / "project_settings.toml").write_text(settings, encoding="utf-8")
+    (project_dir / "run.py").write_text(RUN_TEMPLATE.replace("{name}", name), encoding="utf-8")
+    return load_project(project_dir)
 
 
 def load_project(project_dir, settings_file="project_settings.toml"):
@@ -406,6 +543,129 @@ def read_piezometer_table(path, sheet_name="piezometers"):
     return df
 
 
+def check_piezometer_table(piezometers):
+    """Piezometers whose columns for the model are not (correctly) filled in.
+
+    Checks per filter:
+
+    - `x_crosssection`: filled in (a number);
+    - `modellayer`: filled in, a whole number of 0 or more;
+    - `use_calibration`: 0 or 1 (an empty cell counts as 1).
+
+    A filter without `x_crosssection` or `modellayer` can't be used in the
+    model (notebooks 51 and 52). Filters with `use_calibration` = 0 still need
+    both, because they are shown in the figures.
+
+    Parameters
+    ----------
+    piezometers : pandas.DataFrame
+        Piezometer table, e.g. from `read_piezometer_table`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per filter with a problem: name, transect, filter screen and
+        a description of the problem in the column 'problem'. Empty if all
+        filters are complete.
+    """
+    rows = []
+    for _, row in piezometers.iterrows():
+        problems = []
+        if pd.isna(row.get("x_crosssection")):
+            problems.append("x_crosssection is empty")
+        layer = row.get("modellayer")
+        if pd.isna(layer):
+            problems.append("modellayer is empty")
+        elif not (float(layer).is_integer() and float(layer) >= 0):
+            problems.append(f"modellayer {layer} is not a whole number of 0 or more")
+        use = row.get("use_calibration", 1)
+        if pd.notna(use) and use not in (0, 1):
+            problems.append(f"use_calibration {use} is not 0 or 1")
+        if problems:
+            rows.append({
+                "name": row["name"],
+                "transect": row["transect"],
+                "screen_top": row.get("screen_top"),
+                "screen_bottom": row.get("screen_bottom"),
+                "problem": "; ".join(problems),
+            })
+    columns = ["name", "transect", "screen_top", "screen_bottom", "problem"]
+    return pd.DataFrame(rows, columns=columns)
+
+
+PIEZOMETERS_COLUMNS = [
+    "name", "transect", "x", "y", "ground_level", "screen_top", "screen_bottom",
+    "modellayer", "x_crosssection", "use_calibration", "source", "remark",
+]
+
+
+def add_piezometers(path, piezometers, sheet_name="piezometers"):
+    """Add new piezometers to the piezometer table, without changing the rows that are there.
+
+    Only piezometers whose `name` is not yet in the table are added, at the
+    end of the sheet. Rows that are already there, with the values filled in
+    by hand (`modellayer`, `x_crosssection`, `use_calibration`, `remark`),
+    stay as they are, and so do the other sheets (e.g. 'explanation') and the
+    layout. Columns of `piezometers` that the table doesn't have (e.g.
+    `tube_nr`) are left out. If the file doesn't exist, it is created with the
+    columns of the template (without the sheet 'explanation'). The file is
+    only written if there are piezometers to add.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Excel file with the piezometer table (`piezometers.xlsx`).
+    piezometers : pandas.DataFrame
+        Piezometers to add, with at least the column 'name', e.g. from
+        `piezometer_table_from_obs`.
+    sheet_name : str, optional
+        Sheet with the piezometer table. Default is 'piezometers'.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The rows that were added, with the columns of the table.
+    """
+    from openpyxl import Workbook, load_workbook
+
+    path = Path(path)
+    if path.exists():
+        wb = load_workbook(path)
+        ws = wb[sheet_name]
+        header = [c.value for c in ws[1]]
+        if "name" not in header:
+            raise ValueError(f"No column 'name' in sheet '{sheet_name}' of '{path}'")
+        i_name = header.index("name")
+        existing = {
+            str(row[i_name]) for row in ws.iter_rows(min_row=2, values_only=True) if row[i_name] is not None
+        }
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = sheet_name
+        header = list(PIEZOMETERS_COLUMNS)
+        ws.append(header)
+        existing = set()
+
+    new = piezometers.copy()
+    new["name"] = new["name"].astype(str)
+    new = new[~new["name"].isin(existing)].drop_duplicates("name")
+    new = new.reindex(columns=[c for c in header if c is not None])
+    if new.empty:
+        return new
+
+    def value(v):
+        if v is None or (not isinstance(v, str) and pd.isna(v)):
+            return None
+        return v.item() if isinstance(v, np.generic) else v
+
+    for _, row in new.iterrows():
+        ws.append([value(row[c]) if c is not None else None for c in header])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(path)
+    return new.reset_index(drop=True)
+
+
 def write_piezometers(piezometers, gpkg_file, layer="piezometers", crs="EPSG:28992"):
     """Write the piezometers as point layer to the project geopackage.
 
@@ -421,6 +681,9 @@ def write_piezometers(piezometers, gpkg_file, layer="piezometers", crs="EPSG:289
     crs : str, optional
         Coordinate reference system of x and y. Default is 'EPSG:28992'.
 
+    The layer gets a default QGIS style: blue circles with the name as label
+    (`set_layer_style`).
+
     Returns
     -------
     geopandas.GeoDataFrame
@@ -430,7 +693,147 @@ def write_piezometers(piezometers, gpkg_file, layer="piezometers", crs="EPSG:289
     )
     Path(gpkg_file).parent.mkdir(parents=True, exist_ok=True)
     gdf.to_file(gpkg_file, layer=layer, driver="GPKG")
+    set_layer_style(gpkg_file, layer, point_style_qml("circle", "31,120,180", 2.5))
     return gdf
+
+
+def write_river_gauges(gauges, gpkg_file, layer="river_gauges", crs="EPSG:28992"):
+    """Write the river gauges as a separate point layer to the project geopackage.
+
+    Parameters
+    ----------
+    gauges : pandas.DataFrame
+        One row per gauge with columns 'name', 'x' and 'y', and e.g.
+        'transects' (the transects that use the gauge) and 'source'.
+    gpkg_file : str or pathlib.Path
+        Project geopackage; created if it doesn't exist. Gauges that are
+        already in the layer are replaced by the new rows with the same
+        name; the other gauges are kept.
+    layer : str, optional
+        Layer name. Default is 'river_gauges'.
+    crs : str, optional
+        Coordinate reference system of x and y. Default is 'EPSG:28992'.
+
+    The layer gets a default QGIS style that differs from the piezometers:
+    dark red triangles with the name as label (`set_layer_style`).
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        All gauges in the layer.
+    """
+    import pyogrio
+
+    gdf = gpd.GeoDataFrame(gauges, geometry=gpd.points_from_xy(gauges["x"], gauges["y"]), crs=crs)
+    if Path(gpkg_file).exists() and layer in pyogrio.list_layers(gpkg_file)[:, 0]:
+        existing = gpd.read_file(gpkg_file, layer=layer).to_crs(crs)
+        existing = existing[~existing["name"].isin(gdf["name"])]
+        gdf = gpd.GeoDataFrame(pd.concat([existing, gdf], ignore_index=True), crs=crs)
+    Path(gpkg_file).parent.mkdir(parents=True, exist_ok=True)
+    gdf.to_file(gpkg_file, layer=layer, driver="GPKG")
+    set_layer_style(gpkg_file, layer, point_style_qml("triangle", "180,30,30", 4.0))
+    return gdf
+
+
+def point_style_qml(shape="circle", color="31,120,180", size=2.5, label_field="name"):
+    """QGIS style (QML) for a point layer: one marker for all points, with a label.
+
+    Parameters
+    ----------
+    shape : str, optional
+        QGIS marker shape, e.g. 'circle', 'triangle', 'square', 'diamond'.
+    color : str, optional
+        Fill colour as 'R,G,B'.
+    size : float, optional
+        Marker size [mm].
+    label_field : str or None, optional
+        Field shown as label; None: no label.
+
+    Returns
+    -------
+    str
+    """
+    labeling = ""
+    if label_field:
+        labeling = (
+            '  <labeling type="simple">\n'
+            '    <settings calloutType="simple">\n'
+            f'      <text-style fieldName="{label_field}" isExpression="0" fontSize="8" fontSizeUnit="Point" '
+            'textColor="0,0,0,255" textOpacity="1">\n'
+            '        <text-buffer bufferDraw="1" bufferSize="0.8" bufferSizeUnits="MM" '
+            'bufferColor="255,255,255,255" bufferOpacity="1"/>\n'
+            '      </text-style>\n'
+            '      <placement placement="6" dist="1" distUnits="MM" quadOffset="2"/>\n'
+            '      <rendering scaleVisibility="0" obstacle="1"/>\n'
+            '    </settings>\n'
+            '  </labeling>\n'
+        )
+    return (
+        "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>\n"
+        f'<qgis version="3.34" styleCategories="Symbology|Labeling" labelsEnabled="{int(bool(label_field))}">\n'
+        '  <renderer-v2 type="singleSymbol" symbollevels="0" forceraster="0" enableorderby="0" '
+        'referencescale="-1">\n'
+        "    <symbols>\n"
+        '      <symbol type="marker" name="0" alpha="1" clip_to_extent="1" force_rhr="0">\n'
+        '        <layer class="SimpleMarker" pass="0" enabled="1" locked="0">\n'
+        '          <Option type="Map">\n'
+        f'            <Option type="QString" name="name" value="{shape}"/>\n'
+        f'            <Option type="QString" name="color" value="{color},255"/>\n'
+        '            <Option type="QString" name="outline_color" value="0,0,0,255"/>\n'
+        '            <Option type="QString" name="outline_style" value="solid"/>\n'
+        '            <Option type="QString" name="outline_width" value="0.3"/>\n'
+        '            <Option type="QString" name="outline_width_unit" value="MM"/>\n'
+        f'            <Option type="QString" name="size" value="{size}"/>\n'
+        '            <Option type="QString" name="size_unit" value="MM"/>\n'
+        '            <Option type="QString" name="scale_method" value="diameter"/>\n'
+        "          </Option>\n"
+        "        </layer>\n"
+        "      </symbol>\n"
+        "    </symbols>\n"
+        "  </renderer-v2>\n"
+        f"{labeling}"
+        "</qgis>\n"
+    )
+
+
+def set_layer_style(gpkg_file, layer, qml, name=None):
+    """Store a QGIS style (QML) as the default style of a layer in a geopackage.
+
+    QGIS reads the default style from the table `layer_styles` when the layer
+    is added to a map. An existing default style of the layer is replaced.
+
+    Parameters
+    ----------
+    gpkg_file : str or pathlib.Path
+        Geopackage with the layer.
+    layer : str
+        Layer name.
+    qml : str
+        Style, e.g. from `point_style_qml`.
+    name : str, optional
+        Name of the style. Default: the layer name.
+    """
+    import sqlite3
+
+    with sqlite3.connect(str(gpkg_file)) as conn:
+        row = conn.execute(
+            "SELECT column_name FROM gpkg_geometry_columns WHERE table_name = ?", (layer,)
+        ).fetchone()
+        geometry_column = row[0] if row else "geom"
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS layer_styles ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, f_table_catalog TEXT, f_table_schema TEXT, "
+            "f_table_name TEXT, f_geometry_column TEXT, styleName TEXT, styleQML TEXT, styleSLD TEXT, "
+            "useAsDefault INTEGER, description TEXT, owner TEXT, ui TEXT, "
+            "update_time DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))"
+        )
+        conn.execute("DELETE FROM layer_styles WHERE f_table_name = ? AND useAsDefault = 1", (layer,))
+        conn.execute(
+            "INSERT INTO layer_styles (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, "
+            "styleName, styleQML, styleSLD, useAsDefault, description) VALUES ('', '', ?, ?, ?, ?, '', 1, ?)",
+            (layer, geometry_column, name or layer, qml, "default style of timflow-levee-toolkit"),
+        )
+        conn.commit()
 
 
 def read_piezometers(gpkg_file, transect_name, layer="piezometers"):

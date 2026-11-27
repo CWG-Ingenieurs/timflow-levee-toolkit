@@ -1,20 +1,17 @@
-"""Run the minimal path of the workflow notebooks on (a copy of) the example project."""
-import nbformat
+"""Run the minimal path of the workflow notebooks on (a copy of) the example project, with the runner."""
 import pandas as pd
 import pytest
-from nbclient import NotebookClient
 
-from conftest import REPO, TRANSECT
+import timflow_levee_toolkit as tlt
+from conftest import TRANSECT
 
-NOTEBOOKS = [
+SETUP = [
     "00 Set up project",
-    "01 Piezometer locations",
     "10 Import time series from Excel",
+    "13 Piezometer locations",
     "20 Geohydrological scheme",
-    "51 Prepare model inputs",
-    "52 Timflow model",
 ]
-PROJECT_DIR_LINE = 'project_dir = Path.cwd().parent / "examples" / "papendrecht"'
+PERIOD = ("2025-12-01", "2025-12-08")  # the week of the example data
 
 # Results of the example for Papendrecht West (timflow main, October 2026)
 # The calibration of the example is not unique: several parameter sets fit about equally well, and
@@ -24,22 +21,12 @@ MAX_RMSE = 0.12  # [m]
 LEAKAGE_FACTOR_RANGE = (10.0, 10_000.0)  # [m]
 
 
-def run_notebook(name, project_dir):
-    nb = nbformat.read(REPO / "notebooks" / f"{name}.ipynb", as_version=4)
-    cells = [c for c in nb.cells if c.cell_type == "code" and PROJECT_DIR_LINE in c.source]
-    assert len(cells) == 1, f"{name}: project_dir cell not found"
-    cells[0].source = cells[0].source.replace(PROJECT_DIR_LINE, f"project_dir = Path(r'{project_dir}')")
-    for cell in nb.cells:
-        if "parameters" in cell.metadata.get("tags", []):
-            cell.source = f'transect_name = "{TRANSECT}"'
-    NotebookClient(nb, timeout=900, kernel_name="python3",
-                   resources={"metadata": {"path": str(REPO / "notebooks")}}).execute()
-
-
 @pytest.mark.slow
 def test_minimal_path_on_example(example_copy):
-    for name in NOTEBOOKS:
-        run_notebook(name, example_copy)
+    assert tlt.run_notebooks(example_copy, SETUP, timeout=900) == []
+    assert tlt.run_transects(example_copy, [TRANSECT], PERIOD, summary=False, timeout=900) == []
+    executed = example_copy / "data" / "transects" / TRANSECT / "results_final" / "notebooks"
+    assert (executed / "52 Timflow model.ipynb").exists()
 
     final = example_copy / "data" / "transects" / TRANSECT / "results_final"
     summary = pd.read_excel(final / "model_summary.xlsx", index_col=0).loc[TRANSECT]
