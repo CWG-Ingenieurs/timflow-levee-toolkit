@@ -6,7 +6,7 @@ organised in the modules `project`, `timeseries`, `model`, `response`,
 `subsurface`, `maps`, `output` and `runner`.
 """
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 from ._units import DEFAULT_UNITS
 from .maps import BASEMAPS, add_basemap, plot_transect_map, square_extent
