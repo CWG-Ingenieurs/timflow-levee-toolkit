@@ -24,12 +24,13 @@ the modules:
 
 | Module | Contents |
 |---|---|
-| `project` | project settings, transects metadata, piezometer tables, geopackage |
-| `timeseries` | importing observed series into a pastastore, selecting, summarizing and plotting them |
+| `project` | project settings, new projects (`create_project`), transects metadata, piezometer tables, geopackage (piezometers and river gauges, with a QGIS style) |
+| `timeseries` | importing observed series into a pastastore, selecting, summarizing and plotting them, candidate model periods |
 | `model` | Timflow cross-section models: geohydrological scheme (Excel), plots of the model and results, storm events |
 | `response` | response factors, flow resistance |
 | `subsurface` | BRO CPTs and boreholes, REGIS and GeoTOP |
 | `output` | saving figures (`finalize_and_save`) and tables (`export_to_excel`) |
+| `runner` | running the notebooks for a project without opening them (`run_notebooks`, `run_transects`) |
 
 ## Route
 
@@ -38,9 +39,9 @@ the modules:
 | 0 | [`00 Set up project`](00%20Set%20up%20project.ipynb) | minimal | `transects_metadata.xlsx` | folders per transect |
 | 1 | [`10 Import time series from Excel`](10%20Import%20time%20series%20from%20Excel.ipynb) | minimal | `timeseries.xlsx`, `piezometers.xlsx` | pastastore per transect |
 | 1 | [`11 Download BRO groundwater levels`](11%20Download%20BRO%20groundwater%20levels.ipynb) | optional | rectangle per transect | pastastore per transect, new filters in `piezometers.xlsx` |
-| 1 | [`12 Download river levels (Rijkswaterstaat)`](12%20Download%20river%20levels%20%28Rijkswaterstaat%29.ipynb) | optional | `loc_river` per transect | pastastore per transect |
+| 1 | [`12 Download river levels (Rijkswaterstaat)`](12%20Download%20river%20levels%20%28Rijkswaterstaat%29.ipynb) | optional | `loc_river` per transect | pastastore per transect, layer `river_gauges` in `project_data.gpkg` |
 | 2 | [`13 Piezometer locations`](13%20Piezometer%20locations.ipynb) | minimal | `piezometers.xlsx` | `project_data.gpkg` |
-| 2 | [`15 Overview of measurements`](15%20Overview%20of%20measurements.ipynb) | optional | pastastore | overview table and figures |
+| 2 | [`15 Overview of measurements`](15%20Overview%20of%20measurements.ipynb) | optional | pastastore, piezometers | overview table and figures, candidate model periods |
 | 3 | [`20 Geohydrological scheme`](20%20Geohydrological%20scheme.ipynb) | minimal | `model_parameters_<transect>.xlsx` | checked scheme |
 | 3 | [`21 Subsurface data`](21%20Subsurface%20data.ipynb) | optional | rectangle and cross-section line | BRO CPTs and boreholes, REGIS and GeoTOP |
 | 4 | [`51 Prepare model inputs`](51%20Prepare%20model%20inputs.ipynb) | minimal | pastastore, metadata | `observations_model_period.xlsx` |
@@ -54,22 +55,36 @@ are not changed. Fill in `modellayer` and `x_crosssection` of the new filters (b
 after the time series for that reason: it writes the checked piezometer table to the geopackage that
 the later notebooks use.
 
+Notebook 15 also ranks candidate model periods, for a river with tide (`mode = "tide"`: a calm
+week) or without (`mode = "wave"`: a high-water wave); choose the model period of notebook 51 from them.
+
+## Running the notebooks for a project
+
+Instead of opening each notebook and filling in the project folder, transect and model period, the
+notebooks can be run for a project with `tlt.run_notebooks` (e.g. the set-up and download notebooks)
+and `tlt.run_transects` (notebooks 51 and 52 for each transect, then 60). A project keeps these
+settings in `run.py`, written by `tlt.create_project`; see the README of the repository. The executed
+notebooks are saved in the project: 00-21 in `notebooks/`, 51 and 52 in `results_final/notebooks/` of
+the transect, and 60 in `results/`.
+
 ## Project folder
 
 A project folder contains `project_settings.toml` (optional: folder names, file names and units;
-see `examples/papendrecht/project_settings.toml` for all settings) and the input data. The
-default layout:
+see `examples/papendrecht/project_settings.toml` for all settings) and the input data. A new project
+is made with `tlt.create_project(path)`. The default layout:
 
 ```
 <project>/
 ├── project_settings.toml
-├── results/                           (created by notebook 60)
+├── run.py                             (settings to run the notebooks, created by create_project)
+├── notebooks/                         (executed notebooks of run_notebooks)
+├── results/                           (created by notebook 60; model_period/ by notebook 15)
 └── data/
     ├── general/
     │   ├── transects_metadata.xlsx
     │   ├── piezometers.xlsx               (notebook 11 adds the BRO filters)
     │   ├── timeseries.xlsx
-    │   ├── project_data.gpkg              (created by notebook 13)
+    │   ├── project_data.gpkg              (layers piezometers (notebook 13) and river_gauges (notebook 12))
     │   └── storm_events/storm_event_<id>.xlsx
     └── transects/<transect>/
         ├── model_parameters_<transect>.xlsx
