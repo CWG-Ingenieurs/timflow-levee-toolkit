@@ -16,6 +16,7 @@ piezometers = "piezometers.xlsx"        # in 'general': piezometer locations (in
 timeseries = "timeseries.xlsx"          # in 'general': observed time series (input)
 project_data = "project_data.gpkg"      # in 'general': geopackage created by the notebooks
 piezometer_layer = "piezometers"        # layer in 'project_data'
+river_gauge_layer = "river_gauges"      # layer in 'project_data' (written by notebook 12)
 parameters = "model_parameters_{transect}.xlsx"   # in the transect folder
 storm_event = "storm_events/storm_event_{loc_storm_event}.xlsx"   # in 'general'
 results = "results"                     # project-wide results (summary over transects)
